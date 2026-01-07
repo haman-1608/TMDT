@@ -33,9 +33,7 @@ $(document).ready(function(){
 </script>
 
 <div class="lienhe">
-    <div class="banner" >
-        <img src="imgs/trangchu/2.png" alt="Good Optic">
-    </div>
+    
     <div style="display: flex; justify-content: center;">
         <div style="display: flex; flex-direction:column;">
             <p>Trang chủ > <span style="font-weight: bold;">Liên hệ</span></p>

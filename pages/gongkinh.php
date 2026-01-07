@@ -43,7 +43,7 @@ if($total_products <= 0){
 }
 ?>
 <div class="dmsp">
-    <p style="margin: 20px;">Trang chủ > <b>Gọng kính</b></p>
+    <p>Trang chủ > <b>Gọng kính</b></p>
     <h2 style="text-align: center;">Gọng Kính</h2>
     <form class="filter" method="get">
         <input type="hidden" name="page" value="gongkinh">

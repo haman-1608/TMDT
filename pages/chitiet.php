@@ -39,9 +39,9 @@ if (isset($_GET['id'])) {
 
     })
 </script>
-<div class="chitiet" style="padding: 25px 20px;">
+<div class="chitiet">
     <div class="ctietsp">
-        <div class="ctsp">
+        <div class="ctsp1">
             <?php
             $giam_phantram = 0;
             if ($product['price'] > 0 && $product['disscounted_price'] < $product['price']) {
@@ -81,7 +81,7 @@ if (isset($_GET['id'])) {
             ?>
             <img style="width: 100%;" src="<?php echo $imgSrc; ?>" alt="Ảnh sản phẩm" loading="lazy">
         </div>
-        <div class="ctsp">
+        <div class="ctsp2">
             <h1 style="margin-top: 0;"><?php echo $product['product_name']; ?></h1>
             <p>Mã sản phẩm: <?php echo $product['product_id']; ?></p>
             <div class="price">

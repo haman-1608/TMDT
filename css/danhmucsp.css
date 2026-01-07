@@ -8,34 +8,34 @@
 
 .trongkinh{
     display:grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(clamp(90px, 30vw, 250px), 1fr));
     justify-content: center;
     gap:30px;
 }
 
 .timkiem{
     display:grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(clamp(90px, 30vw, 250px), 1fr));
     justify-content: center;
     gap:30px;
 }
 
 .dsbc{
     display:grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(clamp(90px, 30vw, 250px), 1fr));
     gap:30px;
 } 
 
 .kinhram{
     display:grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(clamp(90px, 30vw, 250px), 1fr));
     justify-content: center;
     gap:30px;
 }
 
 .gongkinh{
     display:grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(clamp(90px, 30vw, 250px), 1fr));
     justify-content: center;
     gap:30px;
 }

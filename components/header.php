@@ -53,5 +53,11 @@ $(document).ready(function(){
                 <img src="imgs/icon-header/solar--cart-4-bold.svg" alt="Giỏ hàng">
             </a>
         </div>
+        <div class="icon-follow">
+            <a href="index.php?page=tracuu">
+                <img src="imgs/icon-header/Group.svg" alt="Tra cứu đơn hàng">
+            </a>
+
+        </div>
     </div>
 </header>
