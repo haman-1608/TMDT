@@ -1,34 +1,40 @@
 <?php
-    session_start();
-    include_once "admin/config/dbconnect.php";
-    if(!isset($_SESSION['cart'])) $_SESSION['cart'] = [];
-    if(isset($_POST['add_to_cart'])){
-        $id = $_POST['id'];
-        $name = $_POST['name'];
-        $price = $_POST['price'];
-        $imgs = $_POST['imgs'];
-        $quantity = (isset($_POST['quantity'])) ? intval($_POST['quantity']) : 1;
-        
-        $check = false;
+ob_start();
+session_start();
+include_once "admin/config/dbconnect.php";
 
-        foreach ($_SESSION['cart'] as $index => $sp) {
-            if ($sp['id'] == $id) {
-                $_SESSION['cart'][$index]['quantity'] += $quantity;
-                $check = true;
-                break;
-            }
-        }
+// Khởi tạo giỏ hàng nếu chưa có
+if(!isset($_SESSION['cart'])) $_SESSION['cart'] = [];
+
+// Xử lý thêm vào giỏ hàng
+if(isset($_POST['add_to_cart'])){
+    $id = $_POST['id'];
+    $name = $_POST['name'];
+    $price = $_POST['price'];
+    $imgs = $_POST['imgs'];
+    $quantity = (isset($_POST['quantity'])) ? intval($_POST['quantity']) : 1;
     
-        if(!$check){
-            $sp = array(
-                'id' => $id, 
-                'name' => $name, 
-                'price' => $price, 
-                'imgs' => $imgs, 
-                'quantity' => $quantity);
-            $_SESSION['cart'][] = $sp;
+    $check = false;
+
+    foreach ($_SESSION['cart'] as $index => $sp) {
+        if ($sp['id'] == $id) {
+            $_SESSION['cart'][$index]['quantity'] += $quantity;
+            $check = true;
+            break;
         }
     }
+
+    if(!$check){
+        $sp = array(
+            'id' => $id, 
+            'name' => $name, 
+            'price' => $price, 
+            'imgs' => $imgs, 
+            'quantity' => $quantity
+        );
+        $_SESSION['cart'][] = $sp;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="vi">
@@ -46,30 +52,26 @@
     <link rel="stylesheet" type="text/css" href="css/giohang.css">
     <link rel="icon" type="image/png" href="imgs/Logo1.png">
     <script type="text/javascript" src="javascript/check.js"></script>
-    <script src="jquery-3.7.1.js"></script> <!-- dẫn jquery -->
+    <script src="jquery-3.7.1.js"></script>
     <title>Good Optic - Nhìn rõ hôm nay, tự tin ngày mai</title>
 </head>
 <body>
     
-    <?php
-        include("components/header.php");?>
+    <?php include("components/header.php"); ?>
         
-        <main>
-            <?php
-                $page = $_GET['page'] ?? 'trangchu';
-                $file = "pages/{$page}.php";
-                if (file_exists($file)) {
-                    include($file);
-            } 
-                else {
-                    include("pages/trangchu.php"); // fallback nếu không tồn tại
+    <main>
+        <?php
+            $page = $_GET['page'] ?? 'trangchu';
+            $file = "pages/{$page}.php";
+            
+            if (file_exists($file)) {
+                include($file);
+            } else {
+                include("pages/trangchu.php");
             }
-            ?>
-        </main>
+        ?>
+    </main>
 
-    <?php
-        include("components/footer.php");
-    ?>
+    <?php include("components/footer.php"); ?>
 </body>
 </html>
- 
