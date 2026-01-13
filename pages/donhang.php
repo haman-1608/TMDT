@@ -66,6 +66,46 @@
     $stmt_items->bind_param("i", $order_id);
     $stmt_items->execute();
     $result_items = $stmt_items->get_result();
+
+    // XỬ LÝ KHI NGƯỜI DÙNG BẤM NÚT HỦY
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] == 'cancel_order') {
+        
+        $cancel_id = $_POST['order_id'];
+
+        // BƯỚC 1: Kiểm tra trạng thái hiện tại của đơn hàng
+        $check_sql = "SELECT status FROM `orders` WHERE `order_id` = ?";
+        $check_stmt = $conn->prepare($check_sql);
+        $check_stmt->bind_param("i", $cancel_id);
+        $check_stmt->execute();
+        $result_check = $check_stmt->get_result();
+        $order_check = $result_check->fetch_assoc();
+
+        if ($order_check) {
+            // BƯỚC 2: Kiểm tra điều kiện "Không được hủy đơn đã giao"
+            if ($order_check['status'] == 'Đã giao hàng') {
+                echo "<script>alert('Lỗi: Không thể hủy đơn hàng đã giao thành công!');</script>";
+            } 
+            elseif ($order_check['status'] == 'Đã hủy') {
+                echo "<script>alert('Đơn hàng này đã bị hủy trước đó rồi.');</script>";
+            }
+            else {
+                // BƯỚC 3: Hợp lệ -> Tiến hành cập nhật database
+                $update_sql = "UPDATE `orders` SET `status` = 'Đã hủy' WHERE `order_id` = ?";
+                $update_stmt = $conn->prepare($update_sql);
+                $update_stmt->bind_param("i", $cancel_id);
+                
+                if ($update_stmt->execute()) {
+                    // Reload lại trang để cập nhật giao diện
+                    echo "<script>alert('Đã hủy đơn hàng thành công!'); window.location.href = window.location.href;</script>";
+                    exit; // Dừng code để redirect
+                } else {
+                    echo "<script>alert('Lỗi hệ thống, vui lòng thử lại sau.');</script>";
+                }
+            }
+        }
+    }
+
+// ... (Các đoạn code lấy thông tin hiển thị $order, $result_items ở các bước trước giữ nguyên) ...
 ?>
 
 <!DOCTYPE html>
@@ -106,12 +146,30 @@
                 </div>
             <!-- /ngày tạo đơn -->
             <!-- nút hủy đơn -->
-                <button onclick="alert('Trong file PHP thực tế, nút này sẽ gửi form để cập nhật database.')" class="inline-flex items-center px-4 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
-                    <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                    Hủy đơn hàng
-                </button>
+                <?php if ($order['status'] != 'Đã giao hàng' && $order['status'] != 'Đã hủy'): ?>
+
+                    <div class="flex-shrink-0">
+                        <form method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn hủy đơn hàng này không? Hành động này không thể hoàn tác.');">
+                            <input type="hidden" name="order_id" value="<?php echo $order_id; ?>">
+                            <input type="hidden" name="action" value="cancel_order">
+                            
+                            <button type="submit" class="inline-flex items-center px-4 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
+                                <svg class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                                Hủy đơn hàng
+                            </button>
+                        </form>
+                    </div>
+
+                <?php elseif ($order['status'] == 'Đã hủy'): ?>
+                    <div class="flex-shrink-0">
+                        <span class="px-4 py-2 text-sm font-medium text-red-500 bg-red-50 rounded-md border border-red-200">
+                            Đơn hàng đã hủy
+                        </span>
+                    </div>
+
+                <?php endif; ?>
             <!-- /nút hủy đơn -->
             </div>
             <!-- /Header Đơn Hàng -->
@@ -186,43 +244,61 @@
                         </div>
 
                         <!-- Sản phẩm trong đơn hàng -->
-                        <?php while ($item = $result_items->fetch_assoc()): ?>
-    
-                            <div class="flex py-4 border-b border-gray-100 last:border-0">
+                        <ul class="divide-y divide-gray-200 flex-grow">
+                            <?php 
+                            $cart_subtotal = 0;
+                            while ($item = $result_items->fetch_assoc()): ?>
                                 
-                                <div class="h-20 w-20 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
-                                    <img src="<?php echo htmlspecialchars($item['images']); ?>" alt="" class="h-full w-full object-cover object-center">
-                                </div>
-
-                                <div class="ml-4 flex-1 flex flex-col justify-center">
-                                    <div class="flex justify-between">
-                                        <h3 class="text-sm font-medium text-gray-900">
-                                            <?php echo htmlspecialchars($item['product_name']); ?>
-                                        </h3>
+                                <li class="p-6 hover:bg-gray-50 transition duration-150">
+                                    <div class="flex items-start">
                                         
-                                        <p class="text-sm font-medium text-gray-900 ml-4">
-                                            <?php 
-                                                $total_line = $item['quantity'] * $item['price'];
-                                                echo number_format($total_line, 0, ',', '.'); 
-                                            ?> ₫
-                                        </p>
-                                    </div>
-                                    
-                                    <p class="mt-1 text-sm text-gray-500">
-                                        Số lượng: <?php echo $item['quantity']; ?> x <?php echo number_format($item['price'], 0, ',', '.'); ?> ₫
-                                    </p>
-                                </div>
-                            </div>
+                                        <div class="flex-shrink-0 h-16 w-16 border border-gray-200 rounded-md overflow-hidden bg-white">
+                                            <img 
+                                                src="<?php echo htmlspecialchars($item['images']); ?>" 
+                                                alt="<?php echo htmlspecialchars($item['product_name']); ?>" 
+                                                class="h-full w-full object-cover"
+                                            >
+                                        </div>
 
-                        <?php endwhile; ?>
+                                        <div class="ml-4 flex-1">
+                                            <div class="flex flex-col sm:flex-row sm:justify-between">
+                                                <h3 class="text-sm font-medium text-gray-900 line-clamp-2">
+                                                    <?php echo htmlspecialchars($item['product_name']); ?>
+                                                </h3>
+                                                
+                                                <p class="text-sm font-medium text-gray-900 sm:ml-4 whitespace-nowrap mt-1 sm:mt-0">
+                                                    <?php 
+                                                        $total_line = $item['quantity'] * $item['price'];
+                                                        echo number_format($total_line, 0, ',', '.');
+                                                        $total_line = $item['quantity'] * $item['price'];
+                                                        $cart_subtotal += $total_line;
+                                                    ?> ₫
+                                                </p>
+                                            </div>
+                                            
+                                            <p class="mt-1 text-sm text-gray-500">
+                                                Số lượng: <?php echo $item['quantity']; ?> x <?php echo number_format($item['price'], 0, ',', '.'); ?> ₫
+                                            </p>
+                                        </div>
+                                    </div>
+                                </li>
+
+                            <?php endwhile; ?>
+                        </ul>
                         <!-- /Sản phẩm trong đơn hàng -->
 
                         <!-- tổng tiền -->
                         <div class="bg-gray-50 px-6 py-6 border-t border-gray-200">
+
+                            <!-- tạm tính --> 
                             <div class="flex justify-between text-sm mb-2 text-gray-600">
                                 <span>Tạm tính</span>
-                                <span>7.540.000 ₫</span>
+                                <span>
+                                    <?php echo number_format($cart_subtotal, 0, ',', '.'); ?> ₫
+                                </span>
                             </div>
+                            <!-- /tạm tính -->
+
                             <div class="flex justify-between text-sm mb-4 text-gray-600">
                                 <span>Phí vận chuyển</span>
                                 <span>30.000 ₫</span>
