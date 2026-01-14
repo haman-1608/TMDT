@@ -14,15 +14,31 @@
     }
 ?>
 
-<h1 style="text-align: center;">TRA CỨU ĐƠN HÀNG</h1>
-
-<div class="tracuu">
-    <form action="">
-        <input placeholder="Nhập mã đơn hàng" type="text" name="order-code">
-        <input placeholder="Nhập số điện thoại/Email" type="text" name="order-number-or-email">
-        <button type="submit" name="search-order">
+<div class="tracuu mb-8"> 
+    <form action="index.php" method="GET" class="flex flex-col gap-4 md:flex-row">
+        <input type="hidden" name="page" value="donhang">
+        
+        <input 
+            class="border border-gray-300 p-2 rounded-md flex-1"
+            placeholder="Nhập mã đơn hàng (VD: 5)" 
+            type="text" 
+            name="order_code" 
+            value="<?php echo isset($_GET['order_code']) ? htmlspecialchars($_GET['order_code']) : ''; ?>" 
+            required
+        >
+        <input 
+            class="border border-gray-300 p-2 rounded-md flex-1"
+            placeholder="Nhập số điện thoại hoặc Email đặt hàng" 
+            type="text" 
+            name="contact_info"
+            value="<?php echo isset($_GET['contact_info']) ? htmlspecialchars($_GET['contact_info']) : ''; ?>"
+            required
+        >
+        <button 
+            type="submit" 
+            class="bg-blue-600 text-white px-6 py-2 rounded-md font-bold hover:bg-blue-700 transition"
+        >
             TRA CỨU
         </button>
-    </form>
- </div>
- 
+        </form>
+</div>

@@ -1,111 +1,136 @@
 <?php
-    //kết nối db
-    if (session_status() === PHP_SESSION_NONE) {
-        session_start();
-    }
-    $server = "localhost";
-    $user = "root";
-    $password = "";
-    $db = "goodoptic";
+// 1. KHỞI TẠO VÀ KẾT NỐI DATABASE
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-    $conn = mysqli_connect($server, $user, $password, $db);
+$server = "localhost";
+$user = "root";
+$password = "";
+$db = "goodoptic";
 
-    if (!$conn) {
-        die("Kết nối thất bại:" . mysqli_connect_error());
-    }
+$conn = mysqli_connect($server, $user, $password, $db);
 
-    //biến báo lỗi
-    ini_set('display_errors', 1);
-    ini_set('display_startup_errors', 1);
-    error_reporting(E_ALL);
+if (!$conn) {
+    die("Kết nối thất bại: " . mysqli_connect_error());
+}
 
-    //kết nối bảng orders
-    $sql = "SELECT * FROM `orders` WHERE `order_id` = ?";
+// Bật báo lỗi để debug (Tắt khi deploy thực tế)
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
-    //ngày theo đơn hàng
-    $order_id = 3; 
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $order_id);
-    $stmt->execute();
-    $result = $stmt->get_result(); 
-    $order = $result->fetch_assoc(); 
+// Khởi tạo các biến mặc định để tránh lỗi Undefined Variable trong HTML
+$order = null;
+$result_items = null;
+$error_message = "";
+$status_text_color = "text-gray-600"; // Màu mặc định
+$display_date = "";
+$tam_tinh = 0;
+$phi_ship = 30000;
 
-    if ($order) {
-        $raw_date = $order['created_at']; 
+// ---------------------------------------------------------
+// 2. XỬ LÝ YÊU CẦU HỦY ĐƠN HÀNG (POST)
+// (Đặt lên đầu để xử lý xong mới load lại trang)
+// ---------------------------------------------------------
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] == 'cancel_order') {
+    
+    $cancel_id = $_POST['order_id'];
 
-        $display_date = date("d/m/Y H:i", strtotime($raw_date));
+    // Kiểm tra trạng thái hiện tại
+    $check_sql = "SELECT status FROM `orders` WHERE `order_id` = ?";
+    $check_stmt = $conn->prepare($check_sql);
+    $check_stmt->bind_param("i", $cancel_id);
+    $check_stmt->execute();
+    $result_check = $check_stmt->get_result();
+    $order_check = $result_check->fetch_assoc();
 
-        $order_code = "#DH-2024-" . $order['order_id'];
-        $status = $order['status'];
-    } else {
-        $display_date = "Không xác định";
-        $order_code = "N/A";
-        $status = "N/A";
-    }
-
-    //thanh toán
-    // Mặc định là màu vàng (cho trạng thái Đang xử lý, Chờ duyệt...)
-    $status_text_color = "text-yellow-600"; 
-
-    // Nếu đã giao hàng thành công -> Màu xanh lá
-    if ($order['status'] == 'Đã giao hàng') {
-        $status_text_color = "text-green-600";
-    } 
-    // Nếu đã hủy -> Màu đỏ
-    elseif ($order['status'] == 'Đã hủy') {
-        $status_text_color = "text-red-600";
-    }
-
-    //kết nối bảng order_details và bảng products
-    $sql_items = "SELECT od.*, p.product_name, p.images 
-              FROM `order_details` od
-              JOIN `products` p ON od.product_id = p.product_id
-              WHERE od.order_id = ?";
-
-    $stmt_items = $conn->prepare($sql_items);
-    $stmt_items->bind_param("i", $order_id);
-    $stmt_items->execute();
-    $result_items = $stmt_items->get_result();
-
-    // XỬ LÝ KHI NGƯỜI DÙNG BẤM NÚT HỦY
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] == 'cancel_order') {
-        
-        $cancel_id = $_POST['order_id'];
-
-        // BƯỚC 1: Kiểm tra trạng thái hiện tại của đơn hàng
-        $check_sql = "SELECT status FROM `orders` WHERE `order_id` = ?";
-        $check_stmt = $conn->prepare($check_sql);
-        $check_stmt->bind_param("i", $cancel_id);
-        $check_stmt->execute();
-        $result_check = $check_stmt->get_result();
-        $order_check = $result_check->fetch_assoc();
-
-        if ($order_check) {
-            // BƯỚC 2: Kiểm tra điều kiện "Không được hủy đơn đã giao"
-            if ($order_check['status'] == 'Đã giao hàng') {
-                echo "<script>alert('Lỗi: Không thể hủy đơn hàng đã giao thành công!');</script>";
-            } 
-            elseif ($order_check['status'] == 'Đã hủy') {
-                echo "<script>alert('Đơn hàng này đã bị hủy trước đó rồi.');</script>";
-            }
-            else {
-                // BƯỚC 3: Hợp lệ -> Tiến hành cập nhật database
-                $update_sql = "UPDATE `orders` SET `status` = 'Đã hủy' WHERE `order_id` = ?";
-                $update_stmt = $conn->prepare($update_sql);
-                $update_stmt->bind_param("i", $cancel_id);
-                
-                if ($update_stmt->execute()) {
-                    // Reload lại trang để cập nhật giao diện
-                    echo "<script>alert('Đã hủy đơn hàng thành công!'); window.location.href = window.location.href;</script>";
-                    exit; // Dừng code để redirect
-                } else {
-                    echo "<script>alert('Lỗi hệ thống, vui lòng thử lại sau.');</script>";
-                }
+    if ($order_check) {
+        if ($order_check['status'] == 'Đã giao hàng') {
+            echo "<script>alert('Lỗi: Không thể hủy đơn hàng đã giao thành công!');</script>";
+        } 
+        elseif ($order_check['status'] == 'Đã hủy') {
+             echo "<script>alert('Đơn hàng này đã bị hủy trước đó rồi.');</script>";
+        }
+        else {
+            // Hợp lệ -> Update
+            $update_sql = "UPDATE `orders` SET `status` = 'Đã hủy' WHERE `order_id` = ?";
+            $update_stmt = $conn->prepare($update_sql);
+            $update_stmt->bind_param("i", $cancel_id);
+            
+            if ($update_stmt->execute()) {
+                // Reload lại trang giữ nguyên các tham số GET để người dùng thấy kết quả ngay
+                echo "<script>alert('Đã hủy đơn hàng thành công!'); window.location.href = window.location.href;</script>";
+                exit; 
+            } else {
+                echo "<script>alert('Lỗi hệ thống, vui lòng thử lại sau.');</script>";
             }
         }
     }
+}
 
-// ... (Các đoạn code lấy thông tin hiển thị $order, $result_items ở các bước trước giữ nguyên) ...
+// ---------------------------------------------------------
+// 3. XỬ LÝ TRA CỨU ĐƠN HÀNG (GET)
+// ---------------------------------------------------------
+if (isset($_GET['order_code']) && isset($_GET['contact_info'])) { 
+    
+    // Lấy dữ liệu đúng tên biến
+    $input_code = $_GET['order_code'];
+    $input_contact = $_GET['contact_info'];
+
+    // Lọc lấy số từ mã đơn
+    $clean_id = preg_replace('/[^0-9]/', '', $input_code);
+
+    if (!empty($clean_id)) {
+        // ... (Đoạn SQL của bạn giữ nguyên) ...
+        $sql = "SELECT * FROM `orders` 
+                WHERE `order_id` = ? 
+                AND (`phone` = ? OR `email` = ?)";
+
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("iss", $clean_id, $input_contact, $input_contact);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $order = $result->fetch_assoc();
+
+        if ($order) {
+            // --- NẾU TÌM THẤY ĐƠN HÀNG THÌ MỚI LÀM TIẾP ---
+            
+            $order_id = $order['order_id']; // Lấy ID chuẩn từ DB
+
+            // A. Xử lý hiển thị ngày tháng
+            $display_date = date("d/m/Y H:i", strtotime($order['created_at']));
+            $order_code_display = "#DH-2024-" . $order_id;
+            $status = $order['status'];
+
+            // B. Xử lý màu sắc trạng thái
+            $status_text_color = "text-yellow-600"; // Mặc định: Đang xử lý
+            if ($order['status'] == 'Đã giao hàng') {
+                $status_text_color = "text-green-600";
+            } elseif ($order['status'] == 'Đã hủy') {
+                $status_text_color = "text-red-600";
+            }
+
+            // C. Lấy danh sách sản phẩm (Chỉ chạy khi có $order)
+            $sql_items = "SELECT od.*, p.product_name, p.images 
+                          FROM `order_details` od
+                          JOIN `products` p ON od.product_id = p.product_id
+                          WHERE od.order_id = ?";
+            
+            $stmt_items = $conn->prepare($sql_items);
+            $stmt_items->bind_param("i", $order_id);
+            $stmt_items->execute();
+            $result_items = $stmt_items->get_result();
+
+        } else {
+            $error_message = "Không tìm thấy đơn hàng! Vui lòng kiểm tra lại Mã đơn và SĐT/Email.";
+        }
+    } else {
+        $error_message = "Mã đơn hàng không hợp lệ.";
+    }
+} else {
+    $error_message = "Vui lòng nhập thông tin để tra cứu.";
+}
 ?>
 
 <!DOCTYPE html>
@@ -113,7 +138,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Preview: donhang.php</title>
+    <title>Đơn Hàng của bạn</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
