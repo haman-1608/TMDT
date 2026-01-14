@@ -312,8 +312,32 @@ if (isset($_GET['order_code']) && isset($_GET['contact_info'])) {
                         </ul>
                         <!-- /Sản phẩm trong đơn hàng -->
 
-                        <!-- tổng tiền -->
+                        <!-- giá tiền -->
                         <div class="bg-gray-50 px-6 py-6 border-t border-gray-200">
+                            
+                            <!-- logic tính giá -->
+                            <?php
+                            $discount_amount = 0; 
+                            $promotion_code = ""; 
+                            if (!empty($order['promotion_id'])) {
+                                $promo_sql = "SELECT * FROM `promotions` WHERE `promotion_id` = ?";
+                                $stmt_promo = $conn->prepare($promo_sql);
+                                $stmt_promo->bind_param("i", $order['promotion_id']);
+                                $stmt_promo->execute();
+                                $promo_result = $stmt_promo->get_result();
+                                $promo = $promo_result->fetch_assoc();
+                                if ($promo) {
+                                    $promotion_code = $promo['promotion_code'];
+                                    $calculated_discount = ($cart_subtotal * $promo['discount_percentage']) / 100;
+                                    if ($calculated_discount > $promo['max_discount_value']) {
+                                        $discount_amount = $promo['max_discount_value'];
+                                    } else {
+                                        $discount_amount = $calculated_discount;
+                                    }
+                                }
+                            }
+                            ?>
+                            <!-- /logic tính giá -->
 
                             <!-- tạm tính --> 
                             <div class="flex justify-between text-sm mb-2 text-gray-600">
@@ -324,16 +348,36 @@ if (isset($_GET['order_code']) && isset($_GET['contact_info'])) {
                             </div>
                             <!-- /tạm tính -->
 
+                            <!-- phí vận chuyển -->
                             <div class="flex justify-between text-sm mb-4 text-gray-600">
                                 <span>Phí vận chuyển</span>
                                 <span>30.000 ₫</span>
                             </div>
+                            <!-- /phí vận chuyển -->
+                            
+                            <!-- mã giảm giá -->
+                            <?php if ($discount_amount > 0): ?>
+                                <div class="flex justify-between text-sm mb-4 text-green-600 font-medium">
+                                    <span class="flex items-center">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                        </svg>
+                                        Mã giảm giá (<?php echo htmlspecialchars($promotion_code); ?>)
+                                    </span>
+                                    <span>-<?php echo number_format($discount_amount, 0, ',', '.'); ?> ₫</span>
+                                </div>
+                            <?php endif; ?>
+                            <!-- /mã giảm giá -->
+
+                            <!-- tổng tiền -->
                             <div class="flex justify-between text-base font-bold text-gray-900 pt-4 border-t border-gray-200">
                                 <span>Tổng cộng</span>
                                 <span class="text-indigo-600 text-xl">7.570.000 ₫</span>
                             </div>
+                            <!-- /tổng tiền -->
+
                         </div>
-                        <!-- /tổng tiền -->
+                        <!-- /giá tiền -->
                     </div>
                 </div>
             </div>
