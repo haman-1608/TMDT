@@ -33,37 +33,47 @@ $phi_ship = 30000;
 // 2. XỬ LÝ YÊU CẦU HỦY ĐƠN HÀNG (POST)
 // (Đặt lên đầu để xử lý xong mới load lại trang)
 // ---------------------------------------------------------
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] == 'cancel_order') {
+$order = null;
+$error_message = ""; 
+
+// Chỉ chạy khi người dùng bấm nút Tra cứu (có dữ liệu trên URL)
+if (isset($_GET['order_code']) || isset($_GET['contact_info'])) {
     
-    $cancel_id = $_POST['order_id'];
+    // 1. Lấy và làm sạch dữ liệu đầu vào
+    $input_code = trim($_GET['order_code'] ?? '');
+    $input_contact = trim($_GET['contact_info'] ?? '');
 
-    // Kiểm tra trạng thái hiện tại
-    $check_sql = "SELECT status FROM `orders` WHERE `order_id` = ?";
-    $check_stmt = $conn->prepare($check_sql);
-    $check_stmt->bind_param("i", $cancel_id);
-    $check_stmt->execute();
-    $result_check = $check_stmt->get_result();
-    $order_check = $result_check->fetch_assoc();
+    // 2. Kiểm tra nhập thiếu (Bắt buộc phải nhập cả 2)
+    if (empty($input_code) || empty($input_contact)) {
+        $error_message = "Vui lòng nhập đầy đủ cả Mã đơn hàng và SĐT/Email.";
+    } 
+    else {
+        // Lấy số từ mã đơn (VD: "#DH-5" -> "5")
+        $clean_id = preg_replace('/[^0-9]/', '', $input_code);
 
-    if ($order_check) {
-        if ($order_check['status'] == 'Đã giao hàng') {
-            echo "<script>alert('Lỗi: Không thể hủy đơn hàng đã giao thành công!');</script>";
-        } 
-        elseif ($order_check['status'] == 'Đã hủy') {
-             echo "<script>alert('Đơn hàng này đã bị hủy trước đó rồi.');</script>";
-        }
-        else {
-            // Hợp lệ -> Update
-            $update_sql = "UPDATE `orders` SET `status` = 'Đã hủy' WHERE `order_id` = ?";
-            $update_stmt = $conn->prepare($update_sql);
-            $update_stmt->bind_param("i", $cancel_id);
-            
-            if ($update_stmt->execute()) {
-                // Reload lại trang giữ nguyên các tham số GET để người dùng thấy kết quả ngay
-                echo "<script>alert('Đã hủy đơn hàng thành công!'); window.location.href = window.location.href;</script>";
-                exit; 
-            } else {
-                echo "<script>alert('Lỗi hệ thống, vui lòng thử lại sau.');</script>";
+        if (empty($clean_id)) {
+            $error_message = "Mã đơn hàng không hợp lệ.";
+        } else {
+            // 3. CÂU LỆNH QUAN TRỌNG NHẤT:
+            // Dùng AND: Bắt buộc ID phải khớp VÀ (SĐT khớp HOẶC Email khớp)
+            $sql = "SELECT * FROM `orders` 
+                    WHERE `order_id` = ? 
+                    AND (`phone` = ? OR `email` = ?)";
+
+            $stmt = $conn->prepare($sql);
+            // "iss" -> integer (id), string (phone), string (email)
+            $stmt->bind_param("iss", $clean_id, $input_contact, $input_contact);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $order = $result->fetch_assoc();
+
+            // 4. Xử lý kết quả
+            if (!$order) {
+                // Nếu $order trả về null, có nghĩa là:
+                // - Hoặc Mã đơn không tồn tại.
+                // - Hoặc Mã đơn ĐÚNG nhưng SĐT/Email SAI.
+                // -> Báo lỗi chung để bảo mật, không cho người dùng biết sai cái nào.
+                $error_message = "Không tìm thấy! Mã đơn hàng và SĐT/Email không khớp nhau.";
             }
         }
     }
@@ -152,6 +162,16 @@ if (isset($_GET['order_code']) && isset($_GET['contact_info'])) {
         <div class="max-w-4xl mx-auto space-y-6">
            
             <!-- Header Đơn Hàng -->
+            <div class="container mx-auto">
+            <?php if (!empty($error_message)): ?>
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+                    <strong class="font-bold">Lỗi!</strong>
+                    <span class="block sm:inline"><?php echo $error_message; ?></span>
+                </div>
+            <?php endif; ?>
+            </div>
+            <?php if ($order): ?>
+                
             <!-- ngày tạo đơn -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
@@ -170,6 +190,7 @@ if (isset($_GET['order_code']) && isset($_GET['contact_info'])) {
                     </p>
                 </div>
             <!-- /ngày tạo đơn -->
+             
             <!-- nút hủy đơn -->
                 <?php if ($order['status'] != 'Đã giao hàng' && $order['status'] != 'Đã hủy'): ?>
 
@@ -198,7 +219,6 @@ if (isset($_GET['order_code']) && isset($_GET['contact_info'])) {
             <!-- /nút hủy đơn -->
             </div>
             <!-- /Header Đơn Hàng -->
-
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <!-- Cột trái: Thông tin -->
@@ -382,6 +402,7 @@ if (isset($_GET['order_code']) && isset($_GET['contact_info'])) {
                 </div>
             </div>
             <!-- /Cột phải: Sản phẩm -->
+            <?php endif; ?>
 
         </div>
     </div>
