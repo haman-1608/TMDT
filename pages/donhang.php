@@ -371,7 +371,12 @@ if (isset($_GET['order_code']) && isset($_GET['contact_info'])) {
                             <!-- phí vận chuyển -->
                             <div class="flex justify-between text-sm mb-4 text-gray-600">
                                 <span>Phí vận chuyển</span>
-                                <span>30.000 ₫</span>
+                                <span>
+                                    <?php 
+                                    $shipping_fee = isset($order['shipping_fee']) ? $order['shipping_fee'] : 0;
+                                    echo number_format($shipping_fee, 0, ',', '.'); 
+                                    ?> ₫
+                                </span>
                             </div>
                             <!-- /phí vận chuyển -->
                             
@@ -392,7 +397,13 @@ if (isset($_GET['order_code']) && isset($_GET['contact_info'])) {
                             <!-- tổng tiền -->
                             <div class="flex justify-between text-base font-bold text-gray-900 pt-4 border-t border-gray-200">
                                 <span>Tổng cộng</span>
-                                <span class="text-indigo-600 text-xl">7.570.000 ₫</span>
+                                <span class="text-indigo-600 text-xl">
+                                    <?php 
+                                    $ship_db = isset($order['shipping_fee']) ? $order['shipping_fee'] : 0;
+                                    $final_total = $cart_subtotal + $ship_db - $discount_amount;
+                                    echo number_format($final_total, 0, ',', '.'); 
+                                    ?> ₫
+                                </span>
                             </div>
                             <!-- /tổng tiền -->
 
