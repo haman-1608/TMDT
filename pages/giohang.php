@@ -100,6 +100,18 @@ if (isset($_POST['thanhtoan'])) {
     
     $phi_ship = isset($_POST['shipping_fee_value']) ? intval($_POST['shipping_fee_value']) : 0;
     $tien_giam = isset($_POST['discount_value_final']) ? intval($_POST['discount_value_final']) : 0;
+
+    $total_cart = 0;
+    if (isset($_SESSION['cart'])) {
+        foreach ($_SESSION['cart'] as $sp) {
+            $total_cart += $sp['price'] * $sp['quantity'];
+        }
+    }
+
+    // Tính tongtien cuối cùng để lưu vào database
+    $tong_thanh_toan = ($total_cart + $phi_ship) - $tien_giam;
+    if ($tong_thanh_toan < 0) $tong_thanh_toan = 0;
+
     $status = 'Đang xử lý'; 
 
     if (!isset($_COOKIE['customer_id'])) {
@@ -114,8 +126,8 @@ if (isset($_POST['thanhtoan'])) {
 
     $applied_promotion_id = NULL; 
 
-    $dh = mysqli_prepare($conn, "INSERT INTO orders (customer_id, customer_name, address, phone, email, pay_method, shipping_fee, total_discount, promotion_id, status) VALUES (?,?,?,?,?,?,?,?,?,?)");
-    mysqli_stmt_bind_param($dh, 'isssssiiis', $customer_id, $hoten, $fullAddress, $dt, $mail, $hinhthuc, $phi_ship, $tien_giam, $applied_promotion_id, $status);
+    $dh = mysqli_prepare($conn, "INSERT INTO orders (customer_id, customer_name, address, phone, email, pay_method, status, tongtien, shipping_fee, total_discount, promotion_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
+    mysqli_stmt_bind_param($dh, 'issssssdddi', $customer_id, $hoten, $fullAddress, $dt, $mail, $hinhthuc, $status, $tong_thanh_toan, $phi_ship, $tien_giam, $applied_promotion_id);
     mysqli_stmt_execute($dh);
     $order_id = mysqli_insert_id($conn);
 
@@ -318,9 +330,10 @@ if (empty($_SESSION['cart'])) {
             <p id="display_discount">0 VNĐ</p>
         </div>
         <hr style="border-top:1px solid #ddd; margin:15px 0;">
+       
         <div class="tien">
             <b>TỔNG TIỀN</b>
-            <p><?php echo number_format($total, 0, ',', '.') . ' VNĐ'; ?></p>
+            <p id="display_total"><?php echo number_format(($total + 0 - 0), 0, ',', '.') . ' VNĐ'; ?></p>
         </div>
         
         <?php if($total >= 3000000): ?>
