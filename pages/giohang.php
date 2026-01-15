@@ -138,17 +138,33 @@ if (isset($_POST['thanhtoan'])) {
         mysqli_stmt_execute($ctdh);
     }
 
-    try {
-        if(file_exists("./mail/sendmail.php")) {
-            require_once "./mail/sendmail.php"; 
-            guiMailThanhToan($mail, $hoten); 
-        }
-    } catch (Exception $e) {}
+    $orderData = [
+            'order_id' => $order_id,
+            'customer_name' => $hoten,
+            'email' => $mail,
+            'phone' => $dt,
+            'address' => $fullAddress,
+            'cart' => $_SESSION['cart'], // Gửi cả giỏ hàng qua
+            'shipping_fee' => $phi_ship,
+            'discount' => $tien_giam,
+            'total_all' => $tong_thanh_toan
+        ];
 
     unset($_SESSION['cart']);
-    echo "<script>alert('Đặt hàng thành công!'); window.location='index.php';</script>";
+
+    try {
+    if(file_exists("./mail/sendmail.php")) {
+        require_once "./mail/sendmail.php"; 
+        guiMailThanhToan($orderData); 
+    }
+    } catch (Exception $e) {}
+
+    echo "<script>
+            alert('Đặt hàng thành công! GOOD OPTIC đã gửi email xác nhận cho bạn.'); 
+            window.location.href='index.php';
+          </script>";
     exit();
-}
+} 
 
 if (empty($_SESSION['cart'])) {
     echo '<div align="center" style="min-height: 450px; margin-top: 80px;">
@@ -270,6 +286,7 @@ if (empty($_SESSION['cart'])) {
                 </div>
             </label>
             <p style="margin: -10px 3px; font-size: clamp(10px, 2vw, 13px);">Thông tin cá nhân của bạn được sử dụng để xử lý đơn hàng, trải nghiệm trên trang web và các mục đích khác được mô tả trong <b>chính sách bảo mật</b> của chúng tôi.</p>
+            <input type="hidden" name="shipping_fee_value" id="shipping_fee_value" value="0">
             <input type="hidden" name="discount_value_final" id="discount_value_final" value="0">
             <input type="submit" name="thanhtoan" id="thanhtoan" value="THANH TOÁN"></input>
         </div>
