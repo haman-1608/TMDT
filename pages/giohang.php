@@ -1,4 +1,7 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -7,7 +10,15 @@ $user = "root";
 $password = "";
 $db = "goodoptic";
 
+<<<<<<< Updated upstream
 $conn = mysqli_connect($server, $user, $password, $db);
+=======
+// --- Cấu hình riêng ---
+$port = 3307;
+$socket = "mysql";
+$conn = mysqli_connect($server, $user, $password, $db, $port, $socket);
+// ======================
+>>>>>>> Stashed changes
 
 if (!$conn) {
     die("Kết nối thất bại:" . mysqli_connect_error());
@@ -89,6 +100,7 @@ if (isset($_POST['del_id'])) {
     exit();
 }
 
+<<<<<<< Updated upstream
 if (isset($_POST['thanhtoan'])) {
     $hoten = $_POST['hoten'] ?? '';
     $dt = $_POST['dt'] ?? '';
@@ -100,17 +112,52 @@ if (isset($_POST['thanhtoan'])) {
     $status = 'Đang xử lý';
 
     $fullAddress = "$sonha, $xa, $tinh";
+=======
+// // Xử lý khi nhấn thanh toán
+// if (isset($_POST['thanhtoan'])) {
+    // $hoten = $_POST['hoten'] ?? '';
+    // $dt = $_POST['dt'] ?? '';
+    // $mail = $_POST['mail'] ?? '';
+    // $tinh = $_POST['tinh'] ?? '';
+    // $xa = $_POST['xa'] ?? '';
+    // $sonha = $_POST['sonha'] ?? '';
+    // $hinhthuc = $_POST['hinhthuc'] ?? '';
+    // $status = 'Đang xử lý';
 
-    if (!isset($_COOKIE['customer_id'])) {
-        $kh = mysqli_prepare($conn, "INSERT INTO customers (customer_name, email, phone, address) VALUES (?,?,?,?)");
-        mysqli_stmt_bind_param($kh, 'ssss', $hoten, $mail, $dt, $fullAddress);
-        mysqli_stmt_execute($kh);
-        $customer_id = mysqli_insert_id($conn);
-        setcookie("customer_id", $customer_id, time() + (86400 * 30));
-    } else {
-        $customer_id = intval($_COOKIE['customer_id']);
-    }
+    // $fullAddress = "$sonha, $xa, $tinh";
 
+//     // Kiểm tra nếu có cookie customer_id thì lấy ra, không thì thêm khách hàng mới
+//     if (!isset($_COOKIE['customer_id'])) {
+//         $kh = mysqli_prepare($conn, "INSERT INTO customers (customer_name, email, phone, address) VALUES (?,?,?,?)");
+//         mysqli_stmt_bind_param($kh, 'ssss', $hoten, $mail, $dt, $fullAddress);
+//         mysqli_stmt_execute($kh);
+//         $customer_id = mysqli_insert_id($conn);
+//         setcookie("customer_id", $customer_id, time() + (86400 * 30));
+//     } else {
+//         $customer_id = intval($_COOKIE['customer_id']);
+//     }
+
+//     $applied_promotion_id = !empty($_POST['applied_promotion_id']) ? intval($_POST['applied_promotion_id']) : NULL;
+>>>>>>> Stashed changes
+
+//     // Thêm đơn hàng
+//     $dh = mysqli_prepare($conn, "INSERT INTO orders (customer_id, customer_name, address, phone, email, pay_method, promotion_id, status) VALUES (?,?,?,?,?,?,?,?)");
+//     mysqli_stmt_bind_param(
+//         $dh,
+//         'isssssis',
+//         $customer_id,
+//         $hoten,
+//         $fullAddress,
+//         $dt,
+//         $mail,
+//         $hinhthuc,
+//         $applied_promotion_id,
+//         $status
+//     );
+//     mysqli_stmt_execute($dh);
+//     $order_id = mysqli_insert_id($conn);
+
+<<<<<<< Updated upstream
     $applied_promotion_id = !empty($_POST['applied_promotion_id']) ? intval($_POST['applied_promotion_id']) : NULL;
 
     $dh = mysqli_prepare($conn, "INSERT INTO orders 
@@ -153,11 +200,36 @@ if (isset($_POST['thanhtoan'])) {
         // Nếu lỗi gửi mail thì vẫn chạy tiếp để khách không thấy trang trắng
     }
     
+=======
+//     // Thêm chi tiết đơn hàng
+//     foreach ($_SESSION['cart'] as $sp) {
+//         $product_id = $sp['id'];
+//         $quantity = $sp['quantity'];
+//         $price = $sp['price'];
+//         $total_ct = $price * $quantity;
 
-    unset($_SESSION['cart']);
-    echo "<script>alert('Đặt hàng thành công!'); window.location='index.php';</script>";
-    exit();
-}
+//         $ctdh = mysqli_prepare($conn, "INSERT INTO order_details (order_id, product_id, price, quantity, total) VALUES (?,?,?,?,?)");
+//         mysqli_stmt_bind_param($ctdh, 'iidid', $order_id, $product_id, $price, $quantity, $total_ct);
+//         mysqli_stmt_execute($ctdh);
+//     }
+
+//     try {
+//         require_once "./mail/sendmail.php";
+
+//         // 2. Gọi hàm gửi mail
+//         // $mail là email khách nhập từ form, $hoten là tên khách nhập từ form
+//         guiMailThanhToan($mail, $hoten);
+>>>>>>> Stashed changes
+
+//         } catch (Exception $e) {
+//         // Nếu lỗi gửi mail thì vẫn chạy tiếp để khách không thấy trang trắng
+//     }
+
+
+//     unset($_SESSION['cart']);
+//     echo "<script>alert('Đặt hàng thành công!'); window.location='index.php';</script>";
+//     exit();
+// }
 
 if (empty($_SESSION['cart'])) {
     echo '<div align="center" style="min-height: 450px; margin-top: 80px;">
@@ -170,9 +242,15 @@ if (empty($_SESSION['cart'])) {
 
 
 <div class="giohang">
+<<<<<<< Updated upstream
     <form class="ttvc" method="post" name="infor" id="infor" onsubmit="return checkInfomation();">
         <b style="font-size: clamp(19px, 2.5vw, 25px)">THÔNG TIN VẬN CHUYỂN</b> <br>
         <i style="font-size: clamp(10px, 2.5vw, 13px);">Vui lòng nhập đầy đủ các thông tin bên dưới</i>
+=======
+        <form class="ttvc" action="/TMDT%20-%20Copy/pages/xulythanhtoan.php" method="post" name="infor" id="infor" onsubmit="return checkInfomation();">
+            <b style="font-size: clamp(19px, 2.5vw, 25px)">THÔNG TIN VẬN CHUYỂN</b> <br>
+            <i style="font-size: clamp(10px, 2.5vw, 13px);">Vui lòng nhập đầy đủ các thông tin bên dưới</i>
+>>>>>>> Stashed changes
 
         <div>
             <p>Họ và tên *</p>
@@ -377,7 +455,11 @@ $(document).ready(function() {
                 var id_tinh = $(this).find(':selected').data('id');
                 $('#huyen').html('<option value="">Chọn Quận/Huyện</option>');
                 $('#xa').html('<option value="">Chọn Xã/Phường</option>');
+<<<<<<< Updated upstream
                 
+=======
+
+>>>>>>> Stashed changes
                 if (id_tinh) {
                     $.getJSON(`https://esgoo.net/api-tinhthanh/2/${id_tinh}.htm`, function(data_huyen) {
                         if (data_huyen.error == 0) {
@@ -393,7 +475,11 @@ $(document).ready(function() {
             $("#huyen").change(function() {
                 var id_huyen = $(this).find(':selected').data('id');
                 $('#xa').html('<option value="">Chọn Xã/Phường</option>');
+<<<<<<< Updated upstream
                 
+=======
+
+>>>>>>> Stashed changes
                 if (id_huyen) {
                     $.getJSON(`https://esgoo.net/api-tinhthanh/3/${id_huyen}.htm`, function(data_xa) {
                         if (data_xa.error == 0) {
