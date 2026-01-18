@@ -114,15 +114,31 @@ if (isset($_POST['thanhtoan'])) {
 
     $status = 'Đang xử lý'; 
 
-    if (!isset($_COOKIE['customer_id'])) {
-        $kh = mysqli_prepare($conn, "INSERT INTO customers (customer_name, email, phone, address) VALUES (?,?,?,?)");
+    // ===== XÁC ĐỊNH CUSTOMER =====
+    $stmt = mysqli_prepare($conn,
+        "SELECT customer_id FROM customers WHERE email = ? LIMIT 1"
+    );
+    mysqli_stmt_bind_param($stmt, 's', $mail);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+
+    if ($row = mysqli_fetch_assoc($result)) {
+    // Đã tồn tại khách hàng
+    $customer_id = (int)$row['customer_id'];
+    } else {
+        // Chưa tồn tại → tạo mới
+        $kh = mysqli_prepare($conn,
+            "INSERT INTO customers (customer_name, email, phone, address)
+            VALUES (?,?,?,?)"
+        );
         mysqli_stmt_bind_param($kh, 'ssss', $hoten, $mail, $dt, $fullAddress);
         mysqli_stmt_execute($kh);
         $customer_id = mysqli_insert_id($conn);
-        setcookie("customer_id", $customer_id, time() + (86400 * 30));
-    } else {
-        $customer_id = intval($_COOKIE['customer_id']);
-    }
+    } 
+
+// Lưu cookie (30 ngày – dùng cho lần mua sau)
+setcookie("customer_id", $customer_id, time() + (86400 * 30), "/");
+
 
     $applied_promotion_id = NULL; 
 
@@ -187,8 +203,8 @@ if (empty($_SESSION['cart'])) {
         <div style="display: flex; gap: 9%">
             <div class="sdt" style="width: 40%;">
                 <p>Số điện thoại*</p>
-                <input type="text" name="dt" placeholder="Số điện thoại" required>
-            </div>
+                <input type="text" name="dt" placeholder="Số điện thoại" required pattern="[0-9]{10}" maxlength="10" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+        </div>
             <div class="email" style="width: 45%">
                 <p>Email</p>
                 <input type="text" name="mail" placeholder="Email của bạn" required>
