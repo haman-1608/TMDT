@@ -672,7 +672,9 @@ ALTER TABLE `cart`
 -- Constraints for table `orders`
 --
 ALTER TABLE `orders`
-  ADD CONSTRAINT `fk_order_promotion` FOREIGN KEY (`promotion_id`) REFERENCES `promotions` (`promotion_id`),
+  ADD CONSTRAINT `fk_order_promotion` FOREIGN KEY (`promotion_id`) REFERENCES `promotions`(`promotion_id`) 
+  ON DELETE SET NULL 
+  ON UPDATE CASCADE,
   ADD CONSTRAINT `orders_customer_id_foreign` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`customer_id`);
 
 --

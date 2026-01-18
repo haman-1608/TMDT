@@ -181,17 +181,17 @@ if (empty($_SESSION['cart'])) {
         <i style="font-size: clamp(10px, 2.5vw, 13px);">Vui lòng nhập đầy đủ các thông tin bên dưới</i>
 
         <div>
-            <p>Họ và tên *</p>
+            <p>Họ và tên*</p>
             <input type="text" name="hoten" placeholder="Họ và tên của bạn" required>
         </div>
         <div style="display: flex; gap: 9%">
             <div class="sdt" style="width: 40%;">
-                <p>Số điện thoại *</p>
+                <p>Số điện thoại*</p>
                 <input type="text" name="dt" placeholder="Số điện thoại" required>
             </div>
             <div class="email" style="width: 45%">
                 <p>Email</p>
-                <input type="text" name="mail" placeholder="Email của bạn">
+                <input type="text" name="mail" placeholder="Email của bạn" required>
             </div>
         </div>
 
@@ -209,19 +209,19 @@ if (empty($_SESSION['cart'])) {
 
         <div id="delivery-address" class="noio" style="width: 91%;">
             <div>
-                <p>Tỉnh/Thành *</p>
+                <p>Tỉnh/Thành*</p>
                 <select name="tinh" id="tinh" style="width: 90%;" required>
                     <option value="">Chọn Tỉnh/Thành</option>
                 </select> 
             </div>
             <div>
-                <p>Quận/Huyện *</p>
+                <p>Quận/Huyện*</p>
                 <select name="huyen" id="huyen" style="width: 90%;" required>
                     <option value="">Chọn Quận/Huyện</option>
                 </select>
             </div>
             <div>
-                <p>Xã/Phường *</p>
+                <p>Xã/Phường*</p>
                 <select name="xa" id="xa" style="width: 90%;" required>
                     <option value="">Chọn Xã/Phường</option>
                 </select>
