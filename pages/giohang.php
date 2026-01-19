@@ -59,26 +59,73 @@ if (isset($_POST['del_id'])) {
     echo "<script>window.location.href='index.php?page=giohang';</script>";
     exit();
 }
+
+// ===== KIỂM TRA MÃ GIẢM GIÁ =====
+if (isset($_POST['action']) && $_POST['action'] == 'check_coupon') {
+    while (ob_get_level()) { ob_end_clean(); }
+    header('Content-Type: application/json');
+    // Lấy dữ liệu
+    $code = mysqli_real_escape_string($conn, trim($_POST['coupon_code']));
+    $total = floatval($_POST['current_total']);
+    $date_now = date("Y-m-d");
+    // Truy vấn cơ sở dữ liệu
+    $sql = "SELECT * FROM promotions WHERE promotion_code = '$code' AND expiry_date >= '$date_now' LIMIT 1"; 
+    $result = $conn->query($sql);
+
+    // Kiểm tra mã khuyến mãi
+    if ($result && $result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+
+        // Kiểm tra số lần sử dụng còn lại
+        if ($row['times'] <= 0) {
+            echo json_encode(['status' => 'error', 'msg' => 'Mã giảm giá đã hết lượt sử dụng']);
+            exit();
+        }
+        // Tính toán số tiền giảm giá
+        $phantram = isset($row['discount_percentage']) ? floatval($row['discount_percentage']) : 0;
+        $discount_amount = ($total * $phantram) / 100;
+        // Giới hạn mức giảm tối đa
+        $max_giam = isset($row['max_discount_value']) ? floatval($row['max_discount_value']) : 0;
+        if ($max_giam > 0 && $discount_amount > $max_giam) {
+            $discount_amount = $max_giam;
+        }
+        // Đảm bảo số tiền giảm không vượt quá tổng tiền
+        $discount_amount = min($discount_amount, $total); 
+        $new_total = $total - $discount_amount;
+        // Trả về kết quả
+        echo json_encode([
+            'status' => 'success',
+            'discount' => $discount_amount,
+            'new_total' => $new_total,
+            'discount_format' => number_format($discount_amount, 0, ',', '.') . ' VNĐ',
+            'msg' => 'Áp dụng mã thành công! (Giảm ' . $phantram . '%)'
+        ]);
+    } else {
+        echo json_encode(['status' => 'error', 'msg' => 'Mã không tồn tại hoặc đã hết hạn']);
+    }
+    exit();
+}
+
 ?>
 
 
 <div class="giohang">
-    <form class="ttvc" action="./pages/xulythanhtoan.php" method="post" name="infor" id="infor" onsubmit="return checkInfomation();">
-        <b style="font-size: clamp(19px, 2.5vw, 25px)">THÔNG TIN VẬN CHUYỂN</b> <br>
+    <form class="ttvc" method="post" name="infor" id="infor">
+        <b style="font-size: clamp(19px, 2.5vw, 25px)">THÔNG TIN NGƯỜI NHẬN</b> <br>
         <i style="font-size: clamp(10px, 2.5vw, 13px);">Vui lòng nhập đầy đủ các thông tin bên dưới</i>
 
         <div>
-            <p>Họ và tên *</p>
-            <input type="text" name="hoten" placeholder="Họ và tên của bạn">
+            <p>Họ và tên*</p>
+            <input type="text" name="hoten" placeholder="Họ và tên của bạn" required>
         </div>
         <div style="display: flex; gap: 9%">
             <div class="sdt" style="width: 40%;">
-                <p>Số điện thoại *</p>
-                <input type="text" name="dt" placeholder="Số điện thoại của bạn">
+                <p>Số điện thoại*</p>
+                <input type="text" name="dt" placeholder="Số điện thoại" required pattern="[0-9]{10}" maxlength="10" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
             </div>
             <div class="email" style="width: 45%">
                 <p>Email</p>
-                <input type="text" name="mail" placeholder="Email của bạn">
+                <input type="text" name="mail" placeholder="Email của bạn" required>
             </div>
         </div>
 
@@ -94,36 +141,46 @@ if (isset($_POST['del_id'])) {
             </div>
         </div>
 
-        <div class="noio" style="width: 96%;">
+        <div id="delivery-address" class="noio" style="width: 91%;">
             <div>
-                <p>Tỉnh/Thành phố *</p>
-                <select name="tinh" id="tinh" style="width: 90%;">
+                <p>Tỉnh/Thành*</p>
+                <select name="tinh" id="tinh" style="width: 90%;" required>
                     <option value="">Chọn Tỉnh/Thành</option>
-
-                </select>
+                </select> 
             </div>
             <div>
-                <p>Quận/Huyện *</p>
-                <select name="huyen" id="huyen" style="width: 90%;">
+                <p>Quận/Huyện*</p>
+                <select name="huyen" id="huyen" style="width: 90%;" required>
                     <option value="">Chọn Quận/Huyện</option>
                 </select>
             </div>
             <div>
-                <p>Xã/Phường *</p>
-                <select name="xa" id="xa" style="width: 90%;">
+                <p>Xã/Phường*</p>
+                <select name="xa" id="xa" style="width: 90%;" required>
                     <option value="">Chọn Xã/Phường</option>
                 </select>
             </div>
+            <div style="width: 100%;">
+                <p>Số nhà *</p>
+                <input type="text" name="sonha" id="sonha" placeholder="Ví dụ: Số 20, Võ Oanh..." style="width: 90%;" required>
+            </div>
         </div>
+
+        <div id="store-address" style="display: none; width: 93%; margin-bottom: 15px;">
+            <p>Chọn cơ sở gần bạn *</p>
+            <select name="store_branch" id="store_branch" style="width: 100%; padding: 10px;">
+                <option value="CS1: Số 2, Đường Võ Oanh, Phường 25, Quận Bình Thạnh, TP.HCM">CS1: Số 2, Đường Võ Oanh, P.25, Q.Bình Thạnh, TP.HCM</option>
+                <option value="CS2: Số 70 Đường Tô Ký, Phường Tân Chánh Hiệp, Quận 12, TP.HCM">CS2: Số 70 Đường Tô Ký, P.Tân Chánh Hiệp, Q.12, TP.HCM</option>
+                <option value="CS3: Số 10 Đường số 12, KP3, P. An Khánh, TP.Thủ Đức">CS3: Số 10 Đường số 12, KP3, P. An Khánh, TP.Thủ Đức</option>
+            </select>
+        </div>
+
         <div>
-            <p>Số nhà *</p>
-            <input type="text" name="sonha" placeholder="Ví dụ: Số 20, Võ Oanh...">
+            <p>Ghi chú</p>
+            <textarea name="note" sps="6" placeholder="Ghi chú đơn hàng..."></textarea>
         </div>
-        <div>
-            <p>Chú thích</p>
-            <textarea name="note" sps="6" placeholder="Chú thích cho đơn hàng của bạn về đơn hàng hoặc về vận chuyển,..."></textarea>
-        </div>
-        <div class="htthanhtoan" style="margin-top: 20px;">
+
+        <div class="htthanhtoan" style="margin-top: 20px; width:95%">
             <b style="font-size: clamp(19px, 2.5vw, 25px);">HÌNH THỨC THANH TOÁN</b>
             <label>
                 <div class="payment-content">
@@ -153,11 +210,12 @@ if (isset($_POST['del_id'])) {
                     <input type="radio" class="checker" name="hinhthuc" value="Momo" id="momoRadio">
                 </div>
             </label>
-                <div id="momo-extra" style="display:none; margin-top:10px;">
-                    <button type="button" data-channel="qr-code">QR Code</button>
-                    <button type="button" data-channel="atm">Thẻ ATM</button>
-                </div>
-                <input type="hidden" name="momo_channel" id="momo_channel">
+            <div id="momo-extra" style="display: none; margin-top: 10px; padding: 10px">
+                <p>Chọn kênh thanh toán Momo:</p>
+                <button type="button" data-channel="qr-code" style="margin-right: 10px; padding: 8px 12px; cursor: pointer;">Thanh toán QR</button>
+                <button type="button" data-channel="atm" style="padding: 8px 12px; cursor: pointer;">Thanh toán ATM</button>
+                <input type="hidden" name="momo_channel" id="momo_channel" value="">
+            </div>
             <label>
                 <div class="payment-content">
                     <div class="payment-logo">
@@ -168,6 +226,8 @@ if (isset($_POST['del_id'])) {
                 </div>
             </label>
             <p style="margin: -10px 3px; font-size: clamp(10px, 2vw, 13px);">Thông tin cá nhân của bạn được sử dụng để xử lý đơn hàng, trải nghiệm trên trang web và các mục đích khác được mô tả trong <b>chính sách bảo mật</b> của chúng tôi.</p>
+            <input type="hidden" name="shipping_fee_value" id="shipping_fee_value" value="0">
+            <input type="hidden" name="discount_value_final" id="discount_value_final" value="0">
             <input type="submit" name="thanhtoan" id="thanhtoan" value="THANH TOÁN"></input>
         </div>
     </form>
@@ -182,20 +242,10 @@ if (isset($_POST['del_id'])) {
                         <div class="anhsp">
                             <?php
                             $imgInput = $sp['imgs'];
-
-                            // Nếu là URL tuyệt đối
-                            if (preg_match('#^https?://#i', $imgInput)) {
-                                $imgSrc = $imgInput;
-                            } else {
-                                // Là tên file ảnh, nối vào thư mục local
+                            if (preg_match('#^https?://#i', $imgInput)) { $imgSrc = $imgInput; } 
+                            else { 
                                 $localPath = 'imgs/products/' . $imgInput;
-
-                                // Kiểm tra file có tồn tại không
-                                if (file_exists($localPath)) {
-                                    $imgSrc = $localPath;
-                                } else {
-                                    $imgSrc = 'imgs/products/default.jpg'; // fallback ảnh mặc định
-                                }
+                                $imgSrc = file_exists($localPath) ? $localPath : 'imgs/products/default.jpg';
                             }
                             ?>
                             <img src="<?php echo $imgSrc; ?>" alt="Ảnh sản phẩm" loading="lazy">
@@ -215,23 +265,38 @@ if (isset($_POST['del_id'])) {
                     </div>
                 </a>
             </div>
-            <?php
-            $t = $sp['price'] * $sp['quantity'];
-            $total += $t; ?>
+            <?php $total += $sp['price'] * $sp['quantity']; ?>
         <?php endforeach; ?>
+
         <b style="font-size: clamp(19px, 2.5vw, 25px);">MÃ GIẢM GIÁ</b>
         <div class="giamgia" style="display: flex; gap:10px; margin-top:20px; margin-bottom: 20px;">
             <input style="width:60%; font-size: clamp(13px, 2vw, 17px);" type="text" name="magiamgia" id="magiamgia" placeholder="NHẬP MÃ GIẢM GIÁ">
             <button name="magiam" >ÁP DỤNG</button>
         </div>
+
+        <div class="tien">
+            <b>TẠM TÍNH</b>
+            <p><?php echo number_format($total, 0, ',', '.') . ' VNĐ'; ?></p>
+        </div>
+        <div class="tien">
+            <b>PHÍ VẬN CHUYỂN</b>
+            <p id="display_ship_cart">0 VNĐ</p>
+        </div>
         <div class="tien">
             <b>TIỀN GIẢM</b>
             <p id="display_discount">0 VNĐ</p>
         </div>
+        <hr style="border-top:1px solid #ddd; margin:15px 0;">
+
         <div class="tien">
             <b>TỔNG TIỀN</b>
-            <p id="display_total"><?php echo number_format($total, 0, ',', '.') . ' VNĐ'; ?></p>
+            <p id="display_total"><?php echo number_format(($total + 0 - 0), 0, ',', '.') . ' VNĐ'; ?></p>
         </div>
+
+        <?php if($total >= 3000000): ?>
+            <p style="text-align: right; color: green; font-style: italic;">* Đơn hàng trên 3.000.000đ được miễn phí vận chuyển!</p>
+        <?php endif; ?>
+    </div>
 </div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
