@@ -1,5 +1,5 @@
 .giohang{
-    margin: 20px 0;
+    padding: 20px 0;
     background-color: #59595915;
     display: flex;
     gap: 30px;
@@ -182,7 +182,7 @@
     width: 90%;
     min-height: 60px;
     color: #595959e6;
-    padding: 10px 10px 10px 30px;
+    padding: 10px 10px 10px 20px;
     position: relative;
     margin: 20px 0px;
     border: 0.2px solid gray;
@@ -269,13 +269,13 @@ button[name="magiam"]:hover{
  }
 
  .tien p{   
-    font-size: clamp(19px, 2.5vw, 25px);
+    font-size: clamp(15px, 2.5vw, 25px);
     font-weight: 600;
  }
 
   .tien b{  
     padding-top: 20px; 
-    font-size: clamp(19px, 2.5vw, 25px);
+    font-size: clamp(15px, 2.5vw, 25px);
     font-weight: 600;
  }
 
