@@ -56,28 +56,28 @@
     transform: translateY(-50%);
     width: 16px;
     height: 16px;
-    border: 2px solid #666;
+    border: 3px solid #8f8f8f;
     border-radius: 50%;
     background: white;
     transition: all 0.3s;
 }
 
 .htthanhtoan label:has(input[type="radio"]:checked)::before {
-    background-color: #000000;
-    border-color: #959595;
+    background-color: white;
+    border-color: black;
 }
 
-/* Dấu chấm trắng bên trong */
+/* Dấu chấm bên trong radio */
 .htthanhtoan label::after {
     content: '';
     position: absolute;
     right: 21px;
     top: 50%;
     transform: translateY(-50%);
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
-    background: white;
+    background: #595959e6;
     opacity: 0;
     transition: opacity 0.3s;
 }
@@ -85,6 +85,25 @@
 .htthanhtoan label:has(input[type="radio"]:checked)::after {
     opacity: 1;
 }
+
+.htthanhtoan button{
+        align-items: center;
+    justify-content: space-between;
+    white-space: nowrap;
+    width: 80%;
+    min-height: 60px;
+    color: #595959e6;
+    padding: 10px 10px 10px 40px;
+    position: relative;
+    margin: 10px 1px 10px 50px;
+    border: 0.2px solid gray;
+    font-size: clamp(12px, 2vw, 17px);
+    display: flex;
+    gap: 40%;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
 .htthanhtoan .payment-content {
     display: flex;
     align-items: center;
