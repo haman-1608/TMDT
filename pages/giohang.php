@@ -1,61 +1,41 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-
 $server = "localhost";
 $user = "root";
 $password = "";
-$db = "goodoptic"; 
-$conn = mysqli_connect($server, $user, $password, $db);
-if (!$conn) { die("Kết nối thất bại: " . mysqli_connect_error()); }
+$db = "goodoptic";
 
-if (isset($_POST['action']) && $_POST['action'] == 'check_coupon') {
-    while (ob_get_level()) { ob_end_clean(); }
-    header('Content-Type: application/json');
+// --- Cấu hình riêng ---
+$port = 3307;
+$socket = "mysql";
+$conn = mysqli_connect($server, $user, $password, $db, $port, $socket);
+// ======================
 
-    $code = mysqli_real_escape_string($conn, trim($_POST['coupon_code']));
-    $total = floatval($_POST['current_total']);
-    $date_now = date("Y-m-d");
-
-    $sql = "SELECT * FROM promotions WHERE promotion_code = '$code' AND expiry_date >= '$date_now' LIMIT 1"; 
-    $result = $conn->query($sql);
-
-    if ($result && $result->num_rows > 0) {
-        $row = $result->fetch_assoc();
-
-        if ($row['times'] <= 0) {
-            echo json_encode(['status' => 'error', 'msg' => 'Mã giảm giá đã hết lượt sử dụng']);
-            exit();
-        }
-
-        $phantram = isset($row['discount_percentage']) ? floatval($row['discount_percentage']) : 0;
-        $discount_amount = ($total * $phantram) / 100;
-
-        $max_giam = isset($row['max_discount_value']) ? floatval($row['max_discount_value']) : 0;
-        if ($max_giam > 0 && $discount_amount > $max_giam) {
-            $discount_amount = $max_giam;
-        }
-
-        $discount_amount = min($discount_amount, $total); 
-        $new_total = $total - $discount_amount;
-
-        echo json_encode([
-            'status' => 'success',
-            'discount' => $discount_amount,
-            'new_total' => $new_total,
-            'discount_format' => number_format($discount_amount, 0, ',', '.') . ' VNĐ',
-            'msg' => 'Áp dụng mã thành công! (Giảm ' . $phantram . '%)'
-        ]);
-    } else {
-        echo json_encode(['status' => 'error', 'msg' => 'Mã không tồn tại hoặc đã hết hạn']);
-    }
-    exit();
+if (!$conn) {
+    die("Kết nối thất bại:" . mysqli_connect_error());
 }
 
+
+// ===== KIỂM TRA GIỎ HÀNG =====
+if (empty($_SESSION['cart'])) {
+    echo '<div align="center" style="min-height: 450px; margin-top: 80px;">
+            <img style="width: 130px; height: 130px;" src="imgs/solar--cart-3-broken.svg" alt="">
+            <h3 style="color: gray;">CHƯA CÓ SẢN PHẨM NÀO TRONG GIỎ</h3>
+          </div>';
+    return;
+}
+
+// ===== XỬ LÝ GIỎ HÀNG =====
 if (isset($_POST['update_quantity_id'])) {
+    // CẬP NHẬT SỐ LƯỢNG SẢN PHẨM
     $id = $_POST['update_quantity_id'];
     $quantity = max(1, intval($_POST['update_quantity_value']));
+    // Cập nhật số lượng trong giỏ hàng
     foreach ($_SESSION['cart'] as $index => $sp) { 
         if ($sp['id'] == $id) {
             $_SESSION['cart'][$index]['quantity'] = $quantity;
@@ -66,6 +46,7 @@ if (isset($_POST['update_quantity_id'])) {
     exit();
 }
 
+// XÓA SẢN PHẨM KHỎI GIỎ HÀNG
 if (isset($_POST['del_id'])) {
     $id = $_POST['del_id'];
     foreach ($_SESSION['cart'] as $index => $sp) {
@@ -78,136 +59,26 @@ if (isset($_POST['del_id'])) {
     echo "<script>window.location.href='index.php?page=giohang';</script>";
     exit();
 }
+?>
 
-if (isset($_POST['thanhtoan'])) {
-    $hoten = $_POST['hoten'] ?? '';
-    $dt = $_POST['dt'] ?? '';
-    $mail = $_POST['mail'] ?? '';
-    $hinhthuc = $_POST['hinhthuc'] ?? '';
-    
-    $shipping_method = $_POST['shipping_method'] ?? 'home';
-    
-    if ($shipping_method == 'store') {
-        $branch = $_POST['store_branch'] ?? '';
-        $fullAddress = "Nhận tại: " . $branch;
-        $tinh = ""; $xa = ""; $sonha = ""; 
-    } else {
-        $tinh = $_POST['tinh'] ?? '';
-        $xa = $_POST['xa'] ?? '';
-        $sonha = $_POST['sonha'] ?? '';
-        $fullAddress = "$sonha, $xa, $tinh";
-    }
-    
-    $phi_ship = isset($_POST['shipping_fee_value']) ? intval($_POST['shipping_fee_value']) : 0;
-    $tien_giam = isset($_POST['discount_value_final']) ? intval($_POST['discount_value_final']) : 0;
-
-    $total_cart = 0;
-    if (isset($_SESSION['cart'])) {
-        foreach ($_SESSION['cart'] as $sp) {
-            $total_cart += $sp['price'] * $sp['quantity'];
-        }
-    }
-
-    // Tính tongtien cuối cùng để lưu vào database
-    $tong_thanh_toan = ($total_cart + $phi_ship) - $tien_giam;
-    if ($tong_thanh_toan < 0) $tong_thanh_toan = 0;
-
-    $status = 'Đang xử lý'; 
-
-    // ===== XÁC ĐỊNH CUSTOMER =====
-    $stmt = mysqli_prepare($conn,
-        "SELECT customer_id FROM customers WHERE email = ? LIMIT 1"
-    );
-    mysqli_stmt_bind_param($stmt, 's', $mail);
-    mysqli_stmt_execute($stmt);
-    $result = mysqli_stmt_get_result($stmt);
-
-    if ($row = mysqli_fetch_assoc($result)) {
-    // Đã tồn tại khách hàng
-    $customer_id = (int)$row['customer_id'];
-    } else {
-        // Chưa tồn tại → tạo mới
-        $kh = mysqli_prepare($conn,
-            "INSERT INTO customers (customer_name, email, phone, address)
-            VALUES (?,?,?,?)"
-        );
-        mysqli_stmt_bind_param($kh, 'ssss', $hoten, $mail, $dt, $fullAddress);
-        mysqli_stmt_execute($kh);
-        $customer_id = mysqli_insert_id($conn);
-    } 
-
-// Lưu cookie (30 ngày – dùng cho lần mua sau)
-setcookie("customer_id", $customer_id, time() + (86400 * 30), "/");
-
-
-    $applied_promotion_id = NULL; 
-
-    $dh = mysqli_prepare($conn, "INSERT INTO orders (customer_id, customer_name, address, phone, email, pay_method, status, tongtien, shipping_fee, total_discount, promotion_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
-    mysqli_stmt_bind_param($dh, 'issssssdddi', $customer_id, $hoten, $fullAddress, $dt, $mail, $hinhthuc, $status, $tong_thanh_toan, $phi_ship, $tien_giam, $applied_promotion_id);
-    mysqli_stmt_execute($dh);
-    $order_id = mysqli_insert_id($conn);
-
-    foreach ($_SESSION['cart'] as $sp) { 
-        $ctdh = mysqli_prepare($conn, "INSERT INTO order_details (order_id, product_id, price, quantity, total) VALUES (?,?,?,?,?)");
-        $total_ct = $sp['price'] * $sp['quantity'];
-        mysqli_stmt_bind_param($ctdh, 'iidid', $order_id, $sp['id'], $sp['price'], $sp['quantity'], $total_ct);
-        mysqli_stmt_execute($ctdh);
-    }
-
-    $orderData = [
-            'order_id' => $order_id,
-            'customer_name' => $hoten,
-            'email' => $mail,
-            'phone' => $dt,
-            'address' => $fullAddress,
-            'cart' => $_SESSION['cart'], // Gửi cả giỏ hàng qua
-            'shipping_fee' => $phi_ship,
-            'discount' => $tien_giam,
-            'total_all' => $tong_thanh_toan
-        ];
-
-    unset($_SESSION['cart']);
-
-    try {
-    if(file_exists("./mail/sendmail.php")) {
-        require_once "./mail/sendmail.php"; 
-        guiMailThanhToan($orderData); 
-    }
-    } catch (Exception $e) {}
-
-    echo "<script>
-            alert('Đặt hàng thành công! GOOD OPTIC đã gửi email xác nhận cho bạn.'); 
-            window.location.href='index.php';
-          </script>";
-    exit();
-} 
-
-if (empty($_SESSION['cart'])) {
-    echo '<div align="center" style="min-height: 450px; margin-top: 80px;">
-            <img style="width: 130px; height: 130px;" src="imgs/solar--cart-3-broken.svg" alt="">
-            <h3 style="color: gray;">CHƯA CÓ SẢN PHẨM NÀO TRONG GIỎ</h3>
-          </div>';
-    return;
-}
-?> 
 
 <div class="giohang">
-    <form class="ttvc" method="post" name="infor" id="infor">
-        <b style="font-size: clamp(19px, 2.5vw, 25px)">THÔNG TIN NGƯỜI NHẬN</b> <br>
+    <form class="ttvc" action="./pages/xulythanhtoan.php" method="post" name="infor" id="infor" onsubmit="return checkInfomation();">
+        <b style="font-size: clamp(19px, 2.5vw, 25px)">THÔNG TIN VẬN CHUYỂN</b> <br>
         <i style="font-size: clamp(10px, 2.5vw, 13px);">Vui lòng nhập đầy đủ các thông tin bên dưới</i>
 
         <div>
-            <p>Họ và tên*</p>
-            <input type="text" name="hoten" placeholder="Họ và tên của bạn" required>
+            <p>Họ và tên *</p>
+            <input type="text" name="hoten" placeholder="Họ và tên của bạn">
         </div>
         <div style="display: flex; gap: 9%">
             <div class="sdt" style="width: 40%;">
-                <p>Số điện thoại*</p>
-                <input type="text" name="dt" placeholder="Số điện thoại" required pattern="[0-9]{10}" maxlength="10" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
-        </div>
+                <p>Số điện thoại *</p>
+                <input type="text" name="dt" placeholder="Số điện thoại của bạn">
+            </div>
             <div class="email" style="width: 45%">
                 <p>Email</p>
-                <input type="text" name="mail" placeholder="Email của bạn" required>
+                <input type="text" name="mail" placeholder="Email của bạn">
             </div>
         </div>
 
@@ -223,46 +94,36 @@ if (empty($_SESSION['cart'])) {
             </div>
         </div>
 
-        <div id="delivery-address" class="noio" style="width: 91%;">
+        <div class="noio" style="width: 96%;">
             <div>
-                <p>Tỉnh/Thành*</p>
-                <select name="tinh" id="tinh" style="width: 90%;" required>
+                <p>Tỉnh/Thành phố *</p>
+                <select name="tinh" id="tinh" style="width: 90%;">
                     <option value="">Chọn Tỉnh/Thành</option>
-                </select> 
+
+                </select>
             </div>
             <div>
-                <p>Quận/Huyện*</p>
-                <select name="huyen" id="huyen" style="width: 90%;" required>
+                <p>Quận/Huyện *</p>
+                <select name="huyen" id="huyen" style="width: 90%;">
                     <option value="">Chọn Quận/Huyện</option>
                 </select>
             </div>
             <div>
-                <p>Xã/Phường*</p>
-                <select name="xa" id="xa" style="width: 90%;" required>
+                <p>Xã/Phường *</p>
+                <select name="xa" id="xa" style="width: 90%;">
                     <option value="">Chọn Xã/Phường</option>
                 </select>
             </div>
-            <div style="width: 100%;">
-                <p>Số nhà *</p>
-                <input type="text" name="sonha" id="sonha" placeholder="Ví dụ: Số 20, Võ Oanh..." style="width: 90%;" required>
-            </div>
         </div>
-
-        <div id="store-address" style="display: none; width: 93%; margin-bottom: 15px;">
-            <p>Chọn cơ sở gần bạn *</p>
-            <select name="store_branch" id="store_branch" style="width: 100%; padding: 10px;">
-                <option value="CS1: Số 2, Đường Võ Oanh, Phường 25, Quận Bình Thạnh, TP.HCM">CS1: Số 2, Đường Võ Oanh, P.25, Q.Bình Thạnh, TP.HCM</option>
-                <option value="CS2: Số 70 Đường Tô Ký, Phường Tân Chánh Hiệp, Quận 12, TP.HCM">CS2: Số 70 Đường Tô Ký, P.Tân Chánh Hiệp, Q.12, TP.HCM</option>
-                <option value="CS3: Số 10 Đường số 12, KP3, P. An Khánh, TP.Thủ Đức">CS3: Số 10 Đường số 12, KP3, P. An Khánh, TP.Thủ Đức</option>
-            </select>
-        </div>
-
         <div>
-            <p>Ghi chú</p>
-            <textarea name="note" sps="6" placeholder="Ghi chú đơn hàng..."></textarea>
+            <p>Số nhà *</p>
+            <input type="text" name="sonha" placeholder="Ví dụ: Số 20, Võ Oanh...">
         </div>
-
-        <div class="htthanhtoan" style="margin-top: 20px; width:95%">
+        <div>
+            <p>Chú thích</p>
+            <textarea name="note" sps="6" placeholder="Chú thích cho đơn hàng của bạn về đơn hàng hoặc về vận chuyển,..."></textarea>
+        </div>
+        <div class="htthanhtoan" style="margin-top: 20px;">
             <b style="font-size: clamp(19px, 2.5vw, 25px);">HÌNH THỨC THANH TOÁN</b>
             <label>
                 <div class="payment-content">
@@ -289,9 +150,14 @@ if (empty($_SESSION['cart'])) {
                         <img src="imgs/momo.png" alt="Momo Icon" loading="lazy">
                     </div>
                     <div class="payment-text">Momo</div>
-                    <input type="radio" class="checker" name="hinhthuc" value="Momo">
+                    <input type="radio" class="checker" name="hinhthuc" value="Momo" id="momoRadio">
                 </div>
             </label>
+                <div id="momo-extra" style="display:none; margin-top:10px;">
+                    <button type="button" data-channel="qr-code">QR Code</button>
+                    <button type="button" data-channel="atm">Thẻ ATM</button>
+                </div>
+                <input type="hidden" name="momo_channel" id="momo_channel">
             <label>
                 <div class="payment-content">
                     <div class="payment-logo">
@@ -302,8 +168,6 @@ if (empty($_SESSION['cart'])) {
                 </div>
             </label>
             <p style="margin: -10px 3px; font-size: clamp(10px, 2vw, 13px);">Thông tin cá nhân của bạn được sử dụng để xử lý đơn hàng, trải nghiệm trên trang web và các mục đích khác được mô tả trong <b>chính sách bảo mật</b> của chúng tôi.</p>
-            <input type="hidden" name="shipping_fee_value" id="shipping_fee_value" value="0">
-            <input type="hidden" name="discount_value_final" id="discount_value_final" value="0">
             <input type="submit" name="thanhtoan" id="thanhtoan" value="THANH TOÁN"></input>
         </div>
     </form>
@@ -318,10 +182,20 @@ if (empty($_SESSION['cart'])) {
                         <div class="anhsp">
                             <?php
                             $imgInput = $sp['imgs'];
-                            if (preg_match('#^https?://#i', $imgInput)) { $imgSrc = $imgInput; } 
-                            else { 
+
+                            // Nếu là URL tuyệt đối
+                            if (preg_match('#^https?://#i', $imgInput)) {
+                                $imgSrc = $imgInput;
+                            } else {
+                                // Là tên file ảnh, nối vào thư mục local
                                 $localPath = 'imgs/products/' . $imgInput;
-                                $imgSrc = file_exists($localPath) ? $localPath : 'imgs/products/default.jpg';
+
+                                // Kiểm tra file có tồn tại không
+                                if (file_exists($localPath)) {
+                                    $imgSrc = $localPath;
+                                } else {
+                                    $imgSrc = 'imgs/products/default.jpg'; // fallback ảnh mặc định
+                                }
                             }
                             ?>
                             <img src="<?php echo $imgSrc; ?>" alt="Ảnh sản phẩm" loading="lazy">
@@ -341,176 +215,189 @@ if (empty($_SESSION['cart'])) {
                     </div>
                 </a>
             </div>
-            <?php $total += $sp['price'] * $sp['quantity']; ?>
+            <?php
+            $t = $sp['price'] * $sp['quantity'];
+            $total += $t; ?>
         <?php endforeach; ?>
-        
         <b style="font-size: clamp(19px, 2.5vw, 25px);">MÃ GIẢM GIÁ</b>
         <div class="giamgia" style="display: flex; gap:10px; margin-top:20px; margin-bottom: 20px;">
             <input style="width:60%; font-size: clamp(13px, 2vw, 17px);" type="text" name="magiamgia" id="magiamgia" placeholder="NHẬP MÃ GIẢM GIÁ">
             <button name="magiam" >ÁP DỤNG</button>
         </div>
-        
-        <div class="tien">
-            <b>TẠM TÍNH</b>
-            <p><?php echo number_format($total, 0, ',', '.') . ' VNĐ'; ?></p>
-        </div>
-        <div class="tien">
-            <b>PHÍ VẬN CHUYỂN</b>
-            <p id="display_ship_cart">0 VNĐ</p>
-        </div>
         <div class="tien">
             <b>TIỀN GIẢM</b>
             <p id="display_discount">0 VNĐ</p>
         </div>
-        <hr style="border-top:1px solid #ddd; margin:15px 0;">
-       
         <div class="tien">
             <b>TỔNG TIỀN</b>
-            <p id="display_total"><?php echo number_format(($total + 0 - 0), 0, ',', '.') . ' VNĐ'; ?></p>
+            <p id="display_total"><?php echo number_format($total, 0, ',', '.') . ' VNĐ'; ?></p>
         </div>
-        
-        <?php if($total >= 3000000): ?>
-            <p style="text-align: right; color: green; font-style: italic;">* Đơn hàng trên 3.000.000đ được miễn phí vận chuyển!</p>
-        <?php endif; ?>
-    </div>
 </div>
- 
+
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-var baseTotal = <?php echo $total; ?>;
-var currentDiscount = 0;
-var currentShip = 0;
-var shippingMethod = 'home';
+    var baseTotal = <?php echo $total; ?>;
+    var currentDiscount = 0;
+    var currentShip = 0;
+    var shippingMethod = 'home';
 
-function formatMoney(n) {
-    return new Intl.NumberFormat('vi-VN').format(n) + ' VNĐ';
-}
-
-function updateTotal() {
-    var finalTotal = baseTotal + currentShip - currentDiscount;
-    if(finalTotal < 0) finalTotal = 0;
-    $('#display_total').text(formatMoney(finalTotal));
-}
-
-window.toggleShipping = function(method) {
-    shippingMethod = method;
-    if (method === 'store') {
-        $('#delivery-address').hide();
-        $('#store-address').show();
-        $('#tinh, #huyen, #xa, #sonha').prop('required', false);
-        currentShip = 0;
-        updateShippingUI();
-    } else {
-        $('#delivery-address').show();
-        $('#store-address').hide();
-        $('#tinh, #huyen, #xa, #sonha').prop('required', true);
-        calculateShippingFee();
-    }
-}
-
-function updateShippingUI() {
-    $('#shipping_fee_value').val(currentShip);
-    $('#display_ship_fee').text(formatMoney(currentShip));
-    $('#display_ship_cart').text(formatMoney(currentShip));
-    updateTotal();
-}
-
-function calculateShippingFee() {
-    if (baseTotal >= 3000000) {
-        currentShip = 0;
-        updateShippingUI();
-        return;
+    function formatMoney(n) {
+        return new Intl.NumberFormat('vi-VN').format(n) + ' VNĐ';
     }
 
-    var tenTinh = $('#tinh').val();
-    if (tenTinh === "") {
-        currentShip = 0;
-    } else if (mienBac.includes(tenTinh)) {
-        currentShip = 40000;
-    } else if (mienTrung.includes(tenTinh)) {
-        currentShip = 30000;
-    } else {
-        currentShip = 20000; 
+    function updateTotal() {
+        var finalTotal = baseTotal + currentShip - currentDiscount;
+        if(finalTotal < 0) finalTotal = 0;
+        $('#display_total').text(formatMoney(finalTotal));
     }
-    updateShippingUI();
-}
 
-const mienBac = ["Thành phố Hà Nội","Tỉnh Hà Giang","Tỉnh Cao Bằng","Tỉnh Bắc Kạn","Tỉnh Tuyên Quang","Tỉnh Lào Cai","Tỉnh Điện Biên","Tỉnh Lai Châu","Tỉnh Sơn La","Tỉnh Yên Bái","Tỉnh Hoà Bình","Tỉnh Thái Nguyên","Tỉnh Lạng Sơn","Tỉnh Quảng Ninh","Tỉnh Bắc Giang","Tỉnh Phú Thọ","Tỉnh Vĩnh Phúc","Tỉnh Bắc Ninh","Tỉnh Hải Dương","Thành phố Hải Phòng","Tỉnh Hưng Yên","Tỉnh Thái Bình","Tỉnh Hà Nam","Tỉnh Nam Định","Tỉnh Ninh Bình"];
-const mienTrung = ["Tỉnh Thanh Hóa","Tỉnh Nghệ An","Tỉnh Hà Tĩnh","Tỉnh Quảng Bình","Tỉnh Quảng Trị","Tỉnh Thừa Thiên Huế","Thành phố Đà Nẵng","Tỉnh Quảng Nam","Tỉnh Quảng Ngãi","Tỉnh Bình Định","Tỉnh Phú Yên","Tỉnh Khánh Hòa","Tỉnh Ninh Thuận","Tỉnh Bình Thuận","Tỉnh Kon Tum","Tỉnh Gia Lai","Tỉnh Đắk Lắk","Tỉnh Đắk Nông","Tỉnh Lâm Đồng"];
+    window.toggleShipping = function(method) {
+        shippingMethod = method;
+        if (method === 'store') {
+            $('#delivery-address').hide();
+            $('#store-address').show();
+            $('#tinh, #huyen, #xa, #sonha').prop('required', false);
+            currentShip = 0;
+            updateShippingUI();
+        } else {
+            $('#delivery-address').show();
+            $('#store-address').hide();
+            $('#tinh, #huyen, #xa, #sonha').prop('required', true);
+            calculateShippingFee();
+        }
+    }
 
-$(document).ready(function() {
-    $('button[name="magiam"]').click(function(e) { 
-        e.preventDefault(); 
-        var code = $('#magiamgia').val();
- 
-        $.ajax({
-            url: window.location.href,
-            method: 'POST',
-            data: {
-                action: 'check_coupon',
-                coupon_code: code,
-                current_total: baseTotal
-            },
-            dataType: 'json',
-            success: function(response) {
-                if(response.status == 'success') {
-                    currentDiscount = parseFloat(response.discount);
-                    $('#discount_value_final').val(currentDiscount);
-                    $('#display_discount').text(response.discount_format);
-                    updateTotal();
-                    alert(response.msg);
-                } else {
-                    alert(response.msg);
-                }
-            },
-            error: function(xhr, status, error) {
-                console.log(xhr.responseText);
-                alert("Lỗi kết nối.");
-            }
-        });
-    });
+    function updateShippingUI() {
+        $('#shipping_fee_value').val(currentShip);
+        $('#display_ship_fee').text(formatMoney(currentShip));
+        $('#display_ship_cart').text(formatMoney(currentShip));
+        updateTotal();
+    }
 
-    $.getJSON('https://esgoo.net/api-tinhthanh/1/0.htm', function(data_tinh) {
-        if (data_tinh.error == 0) {
-            $.each(data_tinh.data, function(key_tinh, val_tinh) {
-                $('#tinh').append(`<option value="${val_tinh.full_name}" data-id="${val_tinh.id}">${val_tinh.full_name}</option>`);
-            });
+    function calculateShippingFee() {
+        if (baseTotal >= 3000000) {
+            currentShip = 0;
+            updateShippingUI();
+            return;
         }
 
-        $("#tinh").change(function() {
-            if(shippingMethod === 'home') {
-                calculateShippingFee();
-            }
+        var tenTinh = $('#tinh').val();
+        if (tenTinh === "") {
+            currentShip = 0;
+        } else if (mienBac.includes(tenTinh)) {
+            currentShip = 40000;
+        } else if (mienTrung.includes(tenTinh)) {
+            currentShip = 30000;
+        } else {
+            currentShip = 20000; 
+        }
+        updateShippingUI();
+    }
 
-            var id_tinh = $(this).find(':selected').data('id');
-            $('#huyen').html('<option value="">Chọn Quận/Huyện</option>');
-            $('#xa').html('<option value="">Chọn Xã/Phường</option>');
-            if (id_tinh) {
-                $.getJSON(`https://esgoo.net/api-tinhthanh/2/${id_tinh}.htm`, function(data_huyen) {
-                    if (data_huyen.error == 0) {
-                        $.each(data_huyen.data, function(key_huyen, val_huyen) {
-                            $('#huyen').append(`<option value="${val_huyen.full_name}" data-id="${val_huyen.id}">${val_huyen.full_name}</option>`);
-                        });
+    const mienBac = ["Thành phố Hà Nội","Tỉnh Hà Giang","Tỉnh Cao Bằng","Tỉnh Bắc Kạn","Tỉnh Tuyên Quang","Tỉnh Lào Cai","Tỉnh Điện Biên","Tỉnh Lai Châu","Tỉnh Sơn La","Tỉnh Yên Bái","Tỉnh Hoà Bình","Tỉnh Thái Nguyên","Tỉnh Lạng Sơn","Tỉnh Quảng Ninh","Tỉnh Bắc Giang","Tỉnh Phú Thọ","Tỉnh Vĩnh Phúc","Tỉnh Bắc Ninh","Tỉnh Hải Dương","Thành phố Hải Phòng","Tỉnh Hưng Yên","Tỉnh Thái Bình","Tỉnh Hà Nam","Tỉnh Nam Định","Tỉnh Ninh Bình"];
+    const mienTrung = ["Tỉnh Thanh Hóa","Tỉnh Nghệ An","Tỉnh Hà Tĩnh","Tỉnh Quảng Bình","Tỉnh Quảng Trị","Tỉnh Thừa Thiên Huế","Thành phố Đà Nẵng","Tỉnh Quảng Nam","Tỉnh Quảng Ngãi","Tỉnh Bình Định","Tỉnh Phú Yên","Tỉnh Khánh Hòa","Tỉnh Ninh Thuận","Tỉnh Bình Thuận","Tỉnh Kon Tum","Tỉnh Gia Lai","Tỉnh Đắk Lắk","Tỉnh Đắk Nông","Tỉnh Lâm Đồng"];
+
+    $(document).ready(function() {
+        $('button[name="magiam"]').click(function(e) { 
+            e.preventDefault(); 
+            var code = $('#magiamgia').val();
+    
+            $.ajax({
+                url: window.location.href,
+                method: 'POST',
+                data: {
+                    action: 'check_coupon',
+                    coupon_code: code,
+                    current_total: baseTotal
+                },
+                dataType: 'json',
+                success: function(response) {
+                    if(response.status == 'success') {
+                        currentDiscount = parseFloat(response.discount);
+                        $('#discount_value_final').val(currentDiscount);
+                        $('#display_discount').text(response.discount_format);
+                        updateTotal();
+                        alert(response.msg);
+                    } else {
+                        alert(response.msg);
                     }
-                });
-            }
+                },
+                error: function(xhr, status, error) {
+                    console.log(xhr.responseText);
+                    alert("Lỗi kết nối.");
+                }
+            });
         });
 
-        $("#huyen").change(function() {
-            var id_huyen = $(this).find(':selected').data('id');
-            $('#xa').html('<option value="">Chọn Xã/Phường</option>');
-            if (id_huyen) {
-                $.getJSON(`https://esgoo.net/api-tinhthanh/3/${id_huyen}.htm`, function(data_xa) {
-                    if (data_xa.error == 0) {
-                        $.each(data_xa.data, function(key_xa, val_xa) {
-                            $('#xa').append(`<option value="${val_xa.full_name}">${val_xa.full_name}</option>`);
-                        });
-                    }
+        $.getJSON('https://esgoo.net/api-tinhthanh/1/0.htm', function(data_tinh) {
+            if (data_tinh.error == 0) {
+                $.each(data_tinh.data, function(key_tinh, val_tinh) {
+                    $('#tinh').append(`<option value="${val_tinh.full_name}" data-id="${val_tinh.id}">${val_tinh.full_name}</option>`);
                 });
+            }
+
+            $("#tinh").change(function() {
+                if(shippingMethod === 'home') {
+                    calculateShippingFee();
+                }
+
+                var id_tinh = $(this).find(':selected').data('id');
+                $('#huyen').html('<option value="">Chọn Quận/Huyện</option>');
+                $('#xa').html('<option value="">Chọn Xã/Phường</option>');
+                if (id_tinh) {
+                    $.getJSON(`https://esgoo.net/api-tinhthanh/2/${id_tinh}.htm`, function(data_huyen) {
+                        if (data_huyen.error == 0) {
+                            $.each(data_huyen.data, function(key_huyen, val_huyen) {
+                                $('#huyen').append(`<option value="${val_huyen.full_name}" data-id="${val_huyen.id}">${val_huyen.full_name}</option>`);
+                            });
+                        }
+                    });
+                }
+            });
+
+            $("#huyen").change(function() {
+                var id_huyen = $(this).find(':selected').data('id');
+                $('#xa').html('<option value="">Chọn Xã/Phường</option>');
+                if (id_huyen) {
+                    $.getJSON(`https://esgoo.net/api-tinhthanh/3/${id_huyen}.htm`, function(data_xa) {
+                        if (data_xa.error == 0) {
+                            $.each(data_xa.data, function(key_xa, val_xa) {
+                                $('#xa').append(`<option value="${val_xa.full_name}">${val_xa.full_name}</option>`);
+                            });
+                        }
+                    });
+                }
+            });
+        });
+
+        calculateShippingFee();
+    });
+</script>
+<script>
+// ===== XỬ LÝ HIỂN THỊ THÊM CHI TIẾT THANH TOÁN QR/ATM KHI CHỌN MOMO =====
+document.addEventListener('DOMContentLoaded', function () {
+    const momoRadio = document.getElementById('momoRadio');
+    const momoExtra = document.getElementById('momo-extra');
+
+    momoRadio.addEventListener('change', function () {
+        if (this.checked) {
+            momoExtra.style.display = 'block';
+        }
+    });
+
+    // Ẩn khi chọn phương thức khác
+    document.querySelectorAll('input[name="hinhthuc"]').forEach(radio => {
+        radio.addEventListener('change', function () {
+            if (!momoRadio.checked) {
+                momoExtra.style.display = 'none';
             }
         });
     });
-    
-    calculateShippingFee();
+});
+document.querySelectorAll('#momo-extra button').forEach(btn => {
+    btn.addEventListener('click', function () {
+        document.getElementById('momo_channel').value = this.dataset.channel;
+        alert('Đã chọn Momo ' + this.dataset.channel.toUpperCase());
+    });
 });
 </script>
