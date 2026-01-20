@@ -1,4 +1,33 @@
 <?php
+
+// Xử lý khi người dùng bấm nút Hủy
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] == 'cancel_order') {
+    
+    // Lấy ID từ form gửi lên
+    $cancel_id = $_POST['order_id'];
+
+    // Kết nối DB (nếu chưa có) - Đảm bảo biến $conn hoạt động
+    // include_once 'db_connect.php'; 
+
+    if (!empty($cancel_id)) {
+        // Cập nhật trạng thái thành 'Đã hủy'
+        $sql_cancel = "UPDATE `orders` SET `status` = 'Đã hủy' WHERE `order_id` = ?";
+        $stmt_cancel = $conn->prepare($sql_cancel);
+        $stmt_cancel->bind_param("i", $cancel_id);
+        
+        if ($stmt_cancel->execute()) {
+            // Hủy thành công -> Load lại trang để thấy kết quả ngay
+            // Dùng JS để reload giữ nguyên query string (để vẫn ở lại trang xem đơn hàng đó)
+            echo "<script>alert('Đã hủy đơn hàng thành công!'); window.location.href = window.location.href;</script>";
+            exit;
+        } else {
+            echo "<script>alert('Lỗi: Không thể hủy đơn hàng.');</script>";
+        }
+    }
+}
+?>
+
+<?php
 // 1. KHỞI TẠO VÀ KẾT NỐI DATABASE
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -14,20 +43,6 @@ $conn = mysqli_connect($server, $user, $password, $db);
 if (!$conn) {
     die("Kết nối thất bại: " . mysqli_connect_error());
 }
-
-// Bật báo lỗi để debug (Tắt khi deploy thực tế)
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
-// Khởi tạo các biến mặc định để tránh lỗi Undefined Variable trong HTML
-$order = null;
-$result_items = null;
-$error_message = "";
-$status_text_color = "text-gray-600"; // Màu mặc định
-$display_date = "";
-$tam_tinh = 0;
-$phi_ship = 30000;
 
 // ---------------------------------------------------------
 // 2. XỬ LÝ YÊU CẦU HỦY ĐƠN HÀNG (POST)
@@ -78,6 +93,22 @@ if (isset($_GET['order_code']) || isset($_GET['contact_info'])) {
         }
     }
 }
+
+
+// Bật báo lỗi để debug (Tắt khi deploy thực tế)
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+// Khởi tạo các biến mặc định để tránh lỗi Undefined Variable trong HTML
+$order = null;
+$result_items = null;
+$error_message = "";
+$status_text_color = "text-gray-600"; // Màu mặc định
+$display_date = "";
+$tam_tinh = 0;
+$phi_ship = 30000;
+
 
 // ---------------------------------------------------------
 // 3. XỬ LÝ TRA CỨU ĐƠN HÀNG (GET)
@@ -208,7 +239,7 @@ if (isset($_GET['order_code']) && isset($_GET['contact_info'])) {
                         </form>
                     </div>
 
-                <?php elseif ($order['status'] == 'Đã hủy'): ?>
+                    <?php elseif ($order['status'] == 'Đã hủy'): ?>
                     <div class="flex-shrink-0">
                         <span class="px-4 py-2 text-sm font-medium text-red-500 bg-red-50 rounded-md border border-red-200">
                             Đơn hàng đã hủy
