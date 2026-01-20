@@ -11,7 +11,7 @@ $password = "";
 $db = "goodoptic";
 
 // --- Cấu hình riêng ---
-$port = 3307;
+$port = 3306;
 $socket = "mysql";
 $conn = mysqli_connect($server, $user, $password, $db, $port, $socket);
 // ======================
@@ -228,7 +228,7 @@ if (isset($_POST['action']) && $_POST['action'] == 'check_coupon') {
             <p style="margin: -10px 3px; font-size: clamp(10px, 2vw, 13px);">Thông tin cá nhân của bạn được sử dụng để xử lý đơn hàng, trải nghiệm trên trang web và các mục đích khác được mô tả trong <b>chính sách bảo mật</b> của chúng tôi.</p>
             <input type="hidden" name="shipping_fee_value" id="shipping_fee_value" value="0">
             <input type="hidden" name="discount_value_final" id="discount_value_final" value="0">
-            <input type="submit" name="thanhtoan" id="thanhtoan" value="THANH TOÁN"></input>
+            <input type="submit" name="thanhtoan" id="thanhtoan" value="THANH TOÁN" formaction="pages/xulythanhtoan.php"></input>
         </div>
     </form>
 

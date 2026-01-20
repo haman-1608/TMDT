@@ -12,7 +12,7 @@
     $db = "goodoptic";
 
     // --- Cấu hình riêng ---
-    $port = 3307;
+    $port = 3306;
     $socket = "mysql";
     $conn = mysqli_connect($server, $user, $password, $db, $port, $socket);
     // ======================
@@ -222,7 +222,7 @@ if ($hinhthuc == 'Tiền mặt' || $hinhthuc == 'Chuyển khoản') {
 
         $orderInfo = "Thanh toán qua MoMo bằng QR code";
         $orderId = $order_id . '_' . time();
-        $redirectUrl = "http://localhost/TMDT%20-%20Copy/index.php?page=payment/momo/momo_thongbao";
+        $redirectUrl = "http://localhost/TMDT/index.php?page=payment/momo/momo_thongbao";
         $ipnUrl = "https://webhook.site/b3088a6a-2d17-4f8d-a383-71389a6c600b";
         $extraData = "";
 
@@ -271,7 +271,7 @@ if ($hinhthuc == 'Tiền mặt' || $hinhthuc == 'Chuyển khoản') {
 
         $orderInfo = "Thanh toán qua MoMo bằng thẻ ATM";
         $orderId = $order_id . '_' . time();
-        $redirectUrl = "http://localhost/TMDT%20-%20Copy/index.php?page=payment/momo/momo_thongbao";
+        $redirectUrl = "http://localhost/TMDT/index.php?page=payment/momo/momo_thongbao";
         $ipnUrl = "https://webhook.site/b3088a6a-2d17-4f8d-a383-71389a6c600b";
         $extraData = "";
         $partnerCode = $config['partnerCode'];
