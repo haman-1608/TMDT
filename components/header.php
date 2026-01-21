@@ -1,6 +1,9 @@
 <script>
 $(document).ready(function(){
     // Code cũ của bạn...
+    const $toggleSearch = $('#toggle-search');
+    const $searchForm = $('.search-form');
+
     $("#toggle-search").click(function(){
         $(".search-form").slideToggle(200);
     });
