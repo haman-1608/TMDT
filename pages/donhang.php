@@ -223,7 +223,7 @@ if (isset($_GET['order_code']) && isset($_GET['contact_info'])) {
             <!-- /ngày tạo đơn -->
              
             <!-- nút hủy đơn -->
-                <?php if ($order['status'] != 'Đã giao hàng' && $order['status'] != 'Đã hủy'): ?>
+                <?php if ($order['status'] != 'Đã giao hàng' && $order['status'] != 'Đã hủy'  && $order['status'] != 'Đang giao hàng'): ?>
 
                     <div class="flex-shrink-0">
                         <form method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn hủy đơn hàng này không? Hành động này không thể hoàn tác.');">
