@@ -12,7 +12,7 @@
     $db = "goodoptic";
 
     // --- Cấu hình riêng ---
-    $port = 3306;
+    $port = 3307;
     $socket = "mysql";
     $conn = mysqli_connect($server, $user, $password, $db, $port, $socket);
     // ======================
@@ -200,15 +200,8 @@ if ($hinhthuc == 'Tiền mặt' || $hinhthuc == 'Chuyển khoản') {
         $vnpSecureHash =   hash_hmac('sha512', $hashdata, $vnp_HashSecret);
         $vnp_Url .= 'vnp_SecureHash=' . $vnpSecureHash;
     }
-    $returnData = array('code' => '00'
-    , 'message' => 'success'
-    , 'data' => $vnp_Url);
-    if (isset($_POST['thanhtoan'])) {
-        header('Location: ' . $vnp_Url);
-        die();
-    } else {
-        echo json_encode($returnData);
-    }
+    header('Location: ' . $vnp_Url);
+    exit();
 }elseif ($hinhthuc == 'Momo') {
     // ===== THANH TOÁN MOMO =====
     if ($momo_channel == 'qr-code') {

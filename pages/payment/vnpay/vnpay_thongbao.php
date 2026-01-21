@@ -20,7 +20,7 @@
     }
     
 ?>
-<div align="center" style="min-height: 450px; margin-top: 80px;">
+<div  style=" text-align: center;min-height: 450px; margin-top: 80px;">
         <img style="width: 200px; height: 150px;" src="imgs/thanks_icon.jpg" alt="thanks icon"/>
         <h3 style="color: gray;">Cảm ơn bạn đã mua hàng!</h3>
         <p style="color: gray;">Bạn đã thanh toán bằng VNPAY thành công. Đơn hàng của bạn đang được xử lý.</p>
