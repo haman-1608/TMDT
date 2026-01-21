@@ -191,16 +191,7 @@ if (isset($_POST['action']) && $_POST['action'] == 'check_coupon') {
                     <input type="radio" class="checker" name="hinhthuc" value="Tiền mặt" checked="true">
                 </div>
 
-            </label>
-            <label>
-                <div class="payment-content">
-                    <div class="payment-logo">
-                        <img src="imgs/banking.png" alt="Bank Icon" loading="lazy">
-                    </div>
-                    <div class="payment-text">Chuyển khoản ngân hàng</div>
-                    <input type="radio" class="checker" name="hinhthuc" value="Chuyển khoản">
-                </div>
-            </label>
+            </label> 
             <label>
                 <div class="payment-content">
                     <div class="payment-logo">

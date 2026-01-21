@@ -12,7 +12,7 @@
     $db = "goodoptic";
 
     // --- Cấu hình riêng ---
-    $port = 3307;
+    $port = 3306;
     $socket = "mysql";
     $conn = mysqli_connect($server, $user, $password, $db, $port, $socket);
     // ======================
@@ -134,7 +134,7 @@
     }} catch (Exception $e) {}
 
 // ===== XỬ LÝ THEO HÌNH THỨC THANH TOÁN =====
-if ($hinhthuc == 'Tiền mặt' || $hinhthuc == 'Chuyển khoản') {
+if ($hinhthuc == 'Tiền mặt') {
     mysqli_query($conn,
     "UPDATE orders SET status='Đã xác nhận' WHERE order_id=$order_id"
     );
