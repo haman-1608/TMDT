@@ -19,5 +19,7 @@ if (!isset($_SESSION["user"])) {
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
   <link rel="icon" type="image/png" href="../imgs/Logo1.png">
+  <!-- <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/morris.js/0.5.1/morris.css"> -->
+
 </head>
 <?php require "./topbar.php"; ?>
