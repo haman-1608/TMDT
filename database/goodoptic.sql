@@ -696,6 +696,25 @@ ALTER TABLE `products`
   ADD CONSTRAINT `products_target_id_foreign` FOREIGN KEY (`target_id`) REFERENCES `targets` (`target_id`);
 COMMIT;
 
+CREATE TABLE `payments` (
+  `payment_id` BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `order_id` BIGINT(20) UNSIGNED NOT NULL,
+  `payment_method` VARCHAR(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `payment_amount` DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+  `payment_status` ENUM('Chờ thanh toán', 'Đã thanh toán', 'Thanh toán thất bại')
+      COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Chờ thanh toán',
+  `transaction_code` VARCHAR(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `payment_date` DATETIME DEFAULT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP()
+      ON UPDATE CURRENT_TIMESTAMP(),
+  PRIMARY KEY (`payment_id`),
+  UNIQUE KEY `transaction_code_unique` (`transaction_code`),
+  KEY `fk_payment_order` (`order_id`)
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci;
+
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
