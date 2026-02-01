@@ -127,11 +127,9 @@
             'total_all' => $tong_thanh_toan
         ];
 
-    try {
-    if(file_exists("./mail/sendmail.php")) {
-        require_once "./mail/sendmail.php"; 
-        guiMailThanhToan($orderData); 
-    }} catch (Exception $e) {}
+
+        require_once __DIR__ . '/../mail/sendmail.php';
+        guiMailThanhToan($orderData);
 
 // ===== XỬ LÝ THEO HÌNH THỨC THANH TOÁN =====
 if ($hinhthuc == 'Tiền mặt') {

@@ -7,7 +7,7 @@ $server = "localhost";
 $user = "root";
 $password = "";
 $db = "goodoptic";
-$port = 3307;
+$port = 3306;
 $socket = "mysql";
 $conn = mysqli_connect($server, $user, $password, $db, $port, $socket);
 
